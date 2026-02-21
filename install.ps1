@@ -2,7 +2,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$RepoUrl = "https://raw.githubusercontent.com/zhiganov/harmonica-chat/main"
+$RepoUrl = "https://raw.githubusercontent.com/harmonicabot/harmonica-chat/main"
 $ClaudeDir = "$env:USERPROFILE\.claude"
 
 Write-Host "Installing harmonica-chat..."
@@ -15,7 +15,7 @@ Invoke-WebRequest -Uri "$RepoUrl/harmonica-chat.md" -OutFile "$ClaudeDir\command
 Write-Host "Installed harmonica-chat.md -> ~/.claude/commands/"
 
 Write-Host ""
-Write-Host "Installation complete! Set your API key:"
-Write-Host '  $env:HARMONICA_API_KEY = "hm_live_..."'
+Write-Host "Installation complete!"
 Write-Host ""
-Write-Host "Then use /harmonica-chat in Claude Code to create sessions."
+Write-Host "harmonica-chat requires the harmonica-mcp server."
+Write-Host "Run /harmonica-chat in Claude Code - it will guide you through setup if needed."
