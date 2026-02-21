@@ -40,6 +40,7 @@ Parse `$ARGUMENTS` to determine which mode to enter:
 3. **Anything else** (topic text, flags, etc.) — Go to **Mode 2: Accelerated Creation**
    - Extract the topic: first quoted string, or all text before the first `--` flag
    - Extract `--project <dir>` if present
+   - If only `--project <dir>` is present with no topic text, still go to Mode 2 — detect the project first and ask for a topic based on the project context
 
 ### Mode 1: Guided Session Design
 
@@ -335,28 +336,34 @@ If the user says no, skip to Step 4.
 
 If the user says yes:
 
-1. Retrieve the Harmonica API key from the harmonica-mcp environment. The community-admin API uses the same `hm_live_` key for authentication.
-2. Call `GET https://community-admin-production.up.railway.app/api/communities` with `Authorization: Bearer {HARMONICA_API_KEY}` header
+1. Ask the user for their Harmonica API key: "To post to a community feed, I need your Harmonica API key (the `hm_live_...` key you used when setting up harmonica-mcp). Can you share it?" If the `HARMONICA_API_KEY` environment variable is set, check that first by running `echo "${HARMONICA_API_KEY:+set}"` — if set, use it without asking.
+2. Use the Bash tool to call community-admin's API with `curl`:
+
+```bash
+curl -s -H "Authorization: Bearer $HARMONICA_API_KEY" \
+  https://community-admin-production.up.railway.app/api/communities
+```
+
 3. Handle failure cases:
    - **API unreachable or network error:** "Community participation feeds aren't available right now. Share the join URL directly instead."
    - **Auth error (401/403):** "Your API key doesn't have access to the community platform. Share the join URL directly instead."
    - **Empty list (0 communities):** "You're not an organizer for any communities. Share the join URL directly, or ask a community admin to add you."
 4. If communities are returned, list them and ask the user to pick one
-5. Post to community-admin:
+5. Use the Bash tool to post to community-admin:
 
-```
-POST https://community-admin-production.up.railway.app/api/events/manual
-Authorization: Bearer {HARMONICA_API_KEY}
-Content-Type: application/json
-
-{
-  "community": "{selected_community_slug}",
-  "title": "{session_topic}",
-  "description": "{session_goal}",
-  "type": "deliberation",
-  "url": "{join_url}",
-  "datetime": "{current ISO 8601 timestamp}"
-}
+```bash
+curl -s -X POST \
+  -H "Authorization: Bearer $HARMONICA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "community": "{selected_community_slug}",
+    "title": "{session_topic}",
+    "description": "{session_goal}",
+    "type": "deliberation",
+    "url": "{join_url}",
+    "datetime": "{current ISO 8601 timestamp}"
+  }' \
+  https://community-admin-production.up.railway.app/api/events/manual
 ```
 
 6. On success: "Added to {community name}'s participation feed. Members will see it in My Community and Dear Neighbors."
