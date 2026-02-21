@@ -1,8 +1,24 @@
 # harmonica-chat
 
-A slash command for [Claude Code](https://claude.ai/code) that creates [Harmonica](https://harmonica.chat) deliberation sessions from the terminal.
+A conversational [Harmonica](https://harmonica.chat) companion for [Claude Code](https://claude.ai/code) that helps you design, create, and manage deliberation sessions.
 
 [Harmonica](https://harmonica.chat) is a structured deliberation platform where groups coordinate through AI-facilitated async conversations. You create a session with a topic and goal, share a link with participants, and each person has a private 1:1 conversation with an AI facilitator. Responses are then synthesized into actionable insights. [Learn more](https://docs.harmonica.chat).
+
+Unlike a simple session creator, harmonica-chat is a guided session designer. It walks you through template selection, goal refinement, and context calibration — then handles the full session lifecycle from creation through follow-up.
+
+## Prerequisites
+
+harmonica-chat requires the [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) server to be installed. If it's not set up, the command will guide you through installation automatically.
+
+To install manually:
+
+1. **Get a Harmonica account** — [Sign up free](https://app.harmonica.chat) if you don't have one.
+2. **Generate an API key** — Go to [Profile](https://app.harmonica.chat/profile) > API Keys > Generate API Key. Copy the `hm_live_...` key.
+3. **Install the MCP server** (replace with your actual key):
+   ```
+   claude mcp add-json harmonica '{"command":"npx","args":["-y","harmonica-mcp"],"env":{"HARMONICA_API_KEY":"hm_live_..."}}' -s user
+   ```
+4. Restart Claude Code to load the new MCP server.
 
 ## Installation
 
@@ -22,87 +38,55 @@ irm https://raw.githubusercontent.com/zhiganov/harmonica-chat/main/install.ps1 |
 
 Copy `harmonica-chat.md` to `~/.claude/commands/harmonica-chat.md`
 
-## Setup
-
-### 1. Create a Harmonica account
-
-Sign up at [app.harmonica.chat](https://app.harmonica.chat) (free).
-
-### 2. Generate an API key
-
-Go to your [Profile page](https://app.harmonica.chat/profile) > **API Keys** tab > **Generate API Key**.
-
-Your key starts with `hm_live_`. Copy it — it's only shown once.
-
-### 3. Set the environment variable
-
-**macOS / Linux** — add to your shell profile (`~/.bashrc`, `~/.zshrc`, or `~/.profile`):
-
-```bash
-export HARMONICA_API_KEY="hm_live_your_key_here"
-```
-
-Then restart your terminal or run `source ~/.bashrc`.
-
-**Windows (PowerShell)** — set it permanently for your user account:
-
-```powershell
-[Environment]::SetEnvironmentVariable("HARMONICA_API_KEY", "hm_live_your_key_here", "User")
-```
-
-Then restart your terminal so Claude Code picks up the new variable.
-
 ## Usage
 
-```
-/harmonica-chat "Session Topic" --goal "What this session should achieve"
-```
-
-This creates a session and returns a join URL you can share with participants.
-
-### Options
-
-| Flag | Description |
-|------|-------------|
-| `--goal "..."` | What the session aims to achieve (required) |
-| `--context "..."` | Background context for participants |
-| `--context-file <path>` | Read context from a file (e.g., SESSION.md from a prior session) |
-| `--prompt "..."` | Custom facilitation prompt |
-| `--prompt-file <path>` | Read facilitation prompt from a file |
-| `--critical "..."` | Critical question or constraint |
-| `--template <id>` | Template ID to use |
-| `--cross-pollination` | Enable idea sharing between participant threads |
-
-### Examples
+### Guided session design
 
 ```
-# Simple session
-/harmonica-chat "Team Retrospective" --goal "Review Q1 and identify improvements"
-
-# Chain sessions using prior context
-/harmonica-chat "Phase 2 Deep Dive" --goal "Evaluate solutions" --context-file ./SESSION.md
-
-# Custom facilitation prompt
-/harmonica-chat "Expert Panel" --goal "Assess risks" --prompt-file ./facilitator.md --cross-pollination
-
-# Interactive (asks for topic and goal)
 /harmonica-chat
 ```
 
-### Environment variables
+Walks you through the full design flow: intent, template matching, topic, goal, context, critical question, and cross-pollination. Each question is asked one at a time.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `HARMONICA_API_KEY` | (required) | Your API key ([get one here](https://app.harmonica.chat/profile)) |
-| `HARMONICA_BASE_URL` | `https://app.harmonica.chat` | API base URL (for self-hosted instances) |
+### Accelerated creation
+
+```
+/harmonica-chat "Q1 retrospective"
+```
+
+Provide a topic upfront to skip the intent and topic questions. The command suggests a template based on your topic and moves through the remaining steps faster.
+
+### Project-aware creation
+
+```
+/harmonica-chat "retro on the API redesign" --project harmonica-web-app
+```
+
+Reads the project's CLAUDE.md and recent git history to auto-generate session context. Suggests a session type based on recent activity patterns.
+
+### Session lifecycle
+
+```
+/harmonica-chat status                    # List your recent sessions
+/harmonica-chat check "Q1 retro"          # Check participant progress and themes
+/harmonica-chat summary "Q1 retro"        # Get the AI-generated synthesis
+/harmonica-chat follow-up "Q1 retro"      # Design a follow-up session
+```
+
+## Features
+
+- **Guided session design** with template matching across 9 templates (Retrospective, Brainstorming, SWOT, Theory of Change, OKRs, Action Planning, Community Policy, Weekly Check-ins, Risk Assessment)
+- **Session design expertise** — goal quality nudges, context calibration, cross-pollination recommendations
+- **Project-aware context** — reads CLAUDE.md and git history to auto-fill session context
+- **Full session lifecycle** — status, check, summary, and follow-up commands
+- **Invitation drafting** with tone adapted to session type, plus integration with communication tools (Zapier, Slack) when available
+- **Community participation feed** integration for publishing sessions to community dashboards
 
 ## See Also
 
-- **[harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp)** — MCP server for full session management (create, list, query, read responses and summaries). Install with `npx harmonica-mcp`.
-
-## API Reference
-
-This command wraps `POST /api/v1/sessions`. See the [Harmonica API docs](https://docs.harmonica.chat/api-reference) for full details.
+- **[harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp)** — MCP server for full API access to Harmonica sessions
+- **[Harmonica docs](https://docs.harmonica.chat)** — Platform documentation
+- **[Harmonica](https://harmonica.chat)** — Main website
 
 ## License
 
