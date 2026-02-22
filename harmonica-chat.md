@@ -98,16 +98,15 @@ Wait for the user's response. If the user skips it and you think one would help,
 
 **Step 7 — Cross-Pollination:**
 
-Apply the **Cross-Pollination Recommendation** logic from Session Design Expertise:
+Decide whether to ask about cross-pollination based on what you already know from prior steps:
 
-- If the session seems like it will have 3+ participants AND is brainstorming-oriented, strongly recommend enabling it.
-- If 3+ participants with other template types, suggest it as an option.
-- If it involves sensitive or anonymous topics, suggest keeping it off.
-- If unlikely to have 3+ participants, skip this question entirely and default to off.
-
-When asking:
+- If the topic/intent clearly implies a small group (e.g., "1-on-1 feedback", "coaching session", "pair review") — skip this question and default to off.
+- If it involves sensitive or anonymous topics — suggest keeping it off: "For sensitive topics, participants may be more candid without seeing others' responses. I'll leave cross-pollination off."
+- Otherwise — ask:
 
 > Will there be 3 or more participants? Cross-pollination shares emerging ideas between participant threads as people contribute — it's great for brainstorming. Enable it?
+
+If the user says yes to 3+ participants, apply the **Cross-Pollination Recommendation** logic from Session Design Expertise to decide how strongly to recommend it (strongly for brainstorming, suggest as option for other types).
 
 Wait for the user's response.
 
@@ -181,7 +180,41 @@ Ask about context, critical question, and cross-pollination only if relevant. If
 
 **Step 4 — Confirm & Create:**
 
-Same summary card, confirmation, and creation as Mode 1 steps 8-9. Then proceed to **Invitation Flow**.
+Present a summary of all gathered fields:
+
+> Here's your session:
+>
+>     Topic:              {topic}
+>     Template:           {template name or "Freeform"}
+>     Goal:               {goal}
+>     Context:            {context or "None"}
+>     Critical question:  {critical or "None"}
+>     Cross-pollination:  {Yes/No}
+>
+> Create this session?
+
+Wait for confirmation. If the user wants to change something, go back to that step.
+
+Call the `create_session` MCP tool with the gathered fields:
+- `topic` (required)
+- `goal` (required)
+- `template_id` (if a template was chosen — use the exact ID from the Template Matching table)
+- `context` (if provided)
+- `critical` (if provided)
+- `cross_pollination` (true/false)
+
+If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
+
+On success, display:
+
+> Session created!
+>
+>     Topic:    {topic}
+>     Join URL: {join_url}
+>
+> Share the join URL with participants — each person gets their own 1-on-1 conversation with the AI facilitator.
+
+Then proceed to the **Invitation Flow** section.
 
 #### Project-Aware Creation
 
@@ -194,11 +227,13 @@ If `--project <dir>` was provided, or if a workspace directory name appears in t
 
 **When a project is detected:**
 
-1. Read the project's `CLAUDE.md` using the Read tool to understand what the project is about
-2. Check recent git history by running `git log --oneline --since='2 weeks ago'` in the project directory
+If the resolved directory doesn't exist, tell the user ("I couldn't find a '{dir}' directory") and fall back to standard Mode 2 without project context.
+
+1. Read the project's `CLAUDE.md` using the Read tool to understand what the project is about. If no `CLAUDE.md` exists, try `README.md` instead. If neither exists, ask the user to briefly describe the project.
+2. Check recent git history by running `git log --oneline --since='2 weeks ago'` in the project directory. If the directory is not a git repo (command fails), skip activity-based suggestions and proceed with whatever context you gathered from step 1.
 3. Summarize the project and recent work in 2-3 sentences
 4. Auto-fill the session's `context` field with this summary (keep it to 3-5 sentences — never dump the full CLAUDE.md or git log)
-5. Suggest a session type based on recent activity patterns:
+5. Suggest a session type based on recent activity patterns (skip if git history was unavailable):
    - Many recent commits or a completed milestone — Retrospective
    - New feature branch or early design work — Brainstorming
    - Bug fixes or incident responses — Risk Assessment
@@ -242,7 +277,7 @@ If there are no sessions, say: "You don't have any sessions yet. Run `/harmonica
 
 1. Call `search_sessions` with the session reference as the query
 2. If no matches: "I couldn't find a session matching '{reference}'. Run `/harmonica-chat status` to see your sessions."
-3. If multiple matches: "I found {N} sessions matching '{reference}':" — list them and ask the user to clarify which one
+3. If multiple matches: list them with topic, participant count, and creation date so the user can pick. For example: "I found 3 sessions matching 'retro': (1) 'Q1 Retro' — 5 participants, 2 days ago; (2) 'Sprint Retro' — 3 participants, 1 week ago; (3) 'Year-end Retro' — 8 participants, 3 weeks ago. Which one?"
 4. Call `get_session` with the matched session ID to get metadata
 5. Call `get_responses` with the session ID to get participant responses
 6. Present a thematic preview — do NOT dump raw responses. Summarize what participants are saying:
@@ -255,7 +290,7 @@ If there are no sessions, say: "You don't have any sessions yet. Run `/harmonica
 
 #### `summary <session reference>` — Get Session Summary
 
-1. Resolve the session using `search_sessions` (same matching logic as `check`)
+1. Resolve the session using `search_sessions` (same matching and disambiguation logic as `check`)
 2. Call `get_summary` with the session ID
 3. If a summary exists, display it formatted clearly
 4. If no summary yet: "No summary yet — the session has {N} participants still in conversation. Want me to show you the raw responses instead, or check back later?"
@@ -336,7 +371,7 @@ If the user says no, skip to Step 4.
 
 If the user says yes:
 
-1. Ask the user for their Harmonica API key: "To post to a community feed, I need your Harmonica API key (the `hm_live_...` key you used when setting up harmonica-mcp). Can you share it?" If the `HARMONICA_API_KEY` environment variable is set, check that first by running `echo "${HARMONICA_API_KEY:+set}"` — if set, use it without asking.
+1. First, check if `HARMONICA_API_KEY` is already set in the environment by running `echo "${HARMONICA_API_KEY:+set}"`. If it returns "set", use it directly. Otherwise, ask the user: "To post to a community feed, I need your Harmonica API key (the `hm_live_...` key you used when setting up harmonica-mcp). Can you share it?"
 2. Use the Bash tool to call community-admin's API with `curl`. Note: the community-admin URL below is hardcoded — if the Railway deployment changes, update it here.
 
 ```bash
@@ -415,10 +450,11 @@ Apply these as soft nudges during the guided flow. Never force them — if the u
 
 ### Cross-Pollination Recommendation
 
+- **Small group implied by topic** (1-on-1, coaching, pair review) — Skip the question, default to off.
+- **Sensitive or anonymous topics** — Suggest off: "For sensitive topics, participants may be more candid without seeing others' responses."
 - **3+ participants + brainstorming** — Strongly recommend: "Seeing others' emerging ideas sparks new ones. I'd recommend enabling cross-pollination."
 - **3+ participants + other types** — Suggest as option: "Cross-pollination shares insights between participant threads as people contribute. Want to enable it?"
-- **Sensitive or anonymous topics** — Suggest off: "For sensitive topics, participants may be more candid without seeing others' responses."
-- **Fewer than 3 participants** — Don't mention it. Cross-pollination isn't useful with few threads.
+- **Fewer than 3 participants** (user confirms) — Default to off. Cross-pollination isn't useful with few threads.
 
 ### Critical Question
 
