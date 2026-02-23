@@ -30,6 +30,10 @@ Then STOP. Do not proceed with any other step until harmonica-mcp is available a
 
 ## Instructions
 
+### Language Rule
+
+All session metadata — topic, goal, context, critical question, and facilitation prompt — **MUST be in English**. Even if the conversation with the user is in another language, translate all fields to English before creating the session. Harmonica's facilitation layer is English-only; non-Latin characters (Cyrillic, CJK, etc.) get corrupted into `???` in titles, descriptions, and prompts. Only the actual participant chat during the session supports other languages.
+
 ### Argument Parsing
 
 Parse `$ARGUMENTS` to determine which mode to enter:
@@ -127,11 +131,65 @@ Present a summary of all gathered fields:
 
 Wait for confirmation. If the user wants to change something, go back to that specific step.
 
-**Step 9 — Create:**
+**Step 9 — Generate Facilitation Prompt:**
+
+Before creating the session, generate a tailored facilitation prompt so the AI facilitator understands the specific session context. Without this, the facilitator only gets a generic "skilled facilitator" system prompt that knows nothing about the topic.
+
+Generate a prompt following this structure:
+
+```
+You are an expert facilitator guiding individual participants through a structured
+online asynchronous deliberation session.
+
+Session: {topic}
+Objective: {goal}
+{if context: Background: {context}}
+{if critical: Critical question: {critical}}
+
+### Session Structure
+
+**Opening**
+Welcome the participant. Introduce the session topic and objective.
+Explain the format: {N} focused steps, estimated {time} minutes.
+Remind them they can exit anytime and choose whether to save incomplete responses.
+
+**Step 1 of {N}: {thematic question derived from goal}**
+{1-2 guiding sub-questions}
+
+**Step 2 of {N}: {next thematic question}**
+{1-2 guiding sub-questions}
+
+{...additional steps as needed, typically 3-5 total}
+
+**Closing**
+Thank the participant. Summarize their key points from each step.
+
+### Guidelines
+- Use clear, simple language
+- Address ONE participant at a time (this is a 1-on-1 conversation)
+- If answers are brief or vague, ask follow-up questions for more detail (but only once per step)
+- Use formatting: bullet points, spacing, emojis where appropriate
+- Maintain a professional, respectful, encouraging tone
+- Keep discussions focused on the session objective
+```
+
+Adapt the number of steps, question themes, and tone to match the session's purpose:
+- **Retrospective**: Steps for what went well, what didn't, action items. Reflective tone.
+- **Brainstorming**: Steps for idea generation, building on ideas, prioritization. Energetic tone.
+- **SWOT**: Steps for strengths, weaknesses, opportunities, threats. Analytical tone.
+- **Risk Assessment**: Steps for risk identification, likelihood/impact, mitigation. Serious tone.
+- **Freeform**: Derive 3-5 logical steps from the goal. Neutral professional tone.
+
+**Important**: The prompt should be specific to THIS session — weave in the actual topic, goal, and context throughout the questions. A prompt about "NSRT community meetup planning" should ask about neighborhood needs and community connections, not generic facilitation questions. This is the key difference from the generic fallback.
+
+Do NOT show the generated prompt to the user unless they ask. Just generate it internally for the `create_session` call.
+
+**Step 10 — Create:**
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
 - `goal` (required)
+- `prompt` (the facilitation prompt generated in Step 9)
 - `template_id` (if a template was chosen — use the exact ID from the Template Matching table)
 - `context` (if provided)
 - `critical` (if provided)
@@ -195,9 +253,12 @@ Present a summary of all gathered fields:
 
 Wait for confirmation. If the user wants to change something, go back to that step.
 
+**Generate the facilitation prompt** using the same approach as Mode 1 Step 9 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
+
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
 - `goal` (required)
+- `prompt` (the generated facilitation prompt)
 - `template_id` (if a template was chosen — use the exact ID from the Template Matching table)
 - `context` (if provided)
 - `critical` (if provided)
@@ -232,7 +293,7 @@ If the resolved directory doesn't exist, tell the user ("I couldn't find a '{dir
 1. Read the project's `CLAUDE.md` using the Read tool to understand what the project is about. If no `CLAUDE.md` exists, try `README.md` instead. If neither exists, ask the user to briefly describe the project.
 2. Check recent git history by running `git log --oneline --since='2 weeks ago'` in the project directory. If the directory is not a git repo (command fails), skip activity-based suggestions and proceed with whatever context you gathered from step 1.
 3. Summarize the project and recent work in 2-3 sentences
-4. Auto-fill the session's `context` field with this summary (keep it to 3-5 sentences — never dump the full CLAUDE.md or git log)
+4. Auto-fill the session's `context` field with this summary (keep it to 3-5 sentences — never dump the full CLAUDE.md or git log). **Expand all abbreviations and jargon**: if the project is "NSRT" explain it as "Novi Sad Relational Tech — community tools for Novi Sad residents"; if it's "OFL" say "Open Facilitation Library". The facilitation prompt will be built from this context, so ambiguous terms like "relational" must be disambiguated explicitly.
 5. Suggest a session type based on recent activity patterns (skip if git history was unavailable):
    - Many recent commits or a completed milestone — Retrospective
    - New feature branch or early design work — Brainstorming
@@ -318,7 +379,7 @@ Present the proposal:
 >
 > Want to create this, or adjust anything?
 
-If confirmed, call `create_session` with the proposed fields, display the result, and proceed to **Invitation Flow**.
+If confirmed, **generate a facilitation prompt** using the same approach as Mode 1 Step 9 (Generate Facilitation Prompt), incorporating the previous session's findings into the context. Then call `create_session` with the proposed fields plus the generated `prompt`, display the result, and proceed to **Invitation Flow**.
 
 ## Invitation Flow
 
@@ -463,6 +524,8 @@ Apply these as soft nudges during the guided flow. Never force them — if the u
 
 ### What NOT to Do
 
-- **Don't write custom facilitation prompts** — the Harmonica API generates good defaults from goal + context. The `prompt` parameter exists but should not be used unless the user explicitly asks.
-- **Don't override template structure** — if a template is selected, trust its built-in facilitation design.
+- **Don't skip prompt generation** — the Harmonica API does NOT generate tailored prompts; it falls back to a generic facilitator. Always generate a session-specific facilitation prompt using the gathered fields (see Mode 1, Step 9).
+- **Don't use non-English metadata** — topic, goal, context, critical, and prompt must all be in English. Translate if the conversation is in another language.
+- **Don't override template structure** — if a template is selected, use its structure as a guide for your generated prompt's step themes, but still generate the prompt (templates provide defaults for goal/context, not facilitation instructions).
 - **Don't push templates on freeform users** — if someone wants a custom session, help them design it without a template.
+- **Don't show the generated prompt by default** — generate it internally. Only show it if the user asks to see or edit it.
