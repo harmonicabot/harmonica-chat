@@ -1,3 +1,4 @@
+<!-- harmonica-chat v2.1.0 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -8,7 +9,26 @@ Design, create, and manage Harmonica deliberation sessions through conversation.
 
 ## Prerequisites
 
-Before doing anything else, check if harmonica-mcp is available by attempting to call the `list_sessions` tool with `limit: 1`.
+### Version Check
+
+Fetch the latest version from GitHub to check if this command is up to date:
+
+```bash
+curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md | head -1
+```
+
+Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.1.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.1.0`). Run this to update:
+> ```
+> curl -sL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md -o ~/.claude/commands/harmonica-chat.md
+> ```
+
+If the fetch fails (network error, timeout), skip silently and proceed — don't block session creation over an update check.
+
+### MCP Check
+
+Check if harmonica-mcp is available by attempting to call the `list_sessions` tool with `limit: 1`.
 
 If the tool responds successfully, proceed to **Instructions**.
 

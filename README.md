@@ -38,6 +38,10 @@ irm https://raw.githubusercontent.com/harmonicabot/harmonica-chat/main/install.p
 
 Copy `harmonica-chat.md` to `~/.claude/commands/harmonica-chat.md`
 
+### Updating
+
+The command checks for updates automatically on each run and will suggest updating if a newer version is available. You can also update manually with the same install command.
+
 ## Usage
 
 ### Guided session design
