@@ -1,4 +1,4 @@
-<!-- harmonica-chat v2.2.0 -->
+<!-- harmonica-chat v2.3.0 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -17,9 +17,9 @@ Fetch the latest version from GitHub to check if this command is up to date:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md | head -1
 ```
 
-Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.2.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.3.0` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.2.0`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.3.0`). Run this to update:
 > ```
 > curl -sL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md -o ~/.claude/commands/harmonica-chat.md
 > ```
@@ -66,6 +66,10 @@ Parse `$ARGUMENTS` to determine which mode to enter:
    - Extract `--project <dir>` if present
    - If only `--project <dir>` is present with no topic text, still go to Mode 2 — detect the project first and ask for a topic based on the project context
 
+### Structured Choices
+
+For steps with known options (template selection, cross-pollination, confirmation), use the `AskUserQuestion` tool to present structured choices instead of free-text prompts. This makes the flow faster and less ambiguous. The tool always includes an "Other" option for custom input, so users can still type freely if none of the options fit.
+
 ### Mode 1: Guided Session Design
 
 Walk the user through designing a session one question at a time. CRITICAL: Ask each question individually. Wait for the user's response before moving to the next question. Never bundle multiple questions together.
@@ -88,11 +92,16 @@ Wait for the user's response.
 
 **Step 2 — Template Match:**
 
-Using the user's intent and the **Template Matching** reference table below, suggest the best-matching template. Explain what it does in 1-2 sentences. If no template matches well, say so.
+Using the user's intent and the **Template Matching** reference table below, identify the best-matching template. Use `AskUserQuestion` to present the choice:
 
-Ask:
+- **Question:** "Which session format works best?"
+- **Header:** "Template"
+- **Options:**
+  - Label: "{template name} (Recommended)", Description: "{1-2 sentence explanation of what this template does}"
+  - Label: "Custom design", Description: "Design a freeform session without a template"
+  - *(If a second template is a plausible fit, include it as a third option)*
 
-> Want to use this template, or design something custom?
+If no template matches well, skip this step and proceed freeform — don't force a template choice.
 
 Wait for the user's response. Record the template choice (template ID or "custom/freeform").
 
@@ -134,19 +143,23 @@ Decide whether to ask about cross-pollination based on what you already know fro
 
 - If the topic/intent clearly implies a small group (e.g., "1-on-1 feedback", "coaching session", "pair review") — skip this question and default to off.
 - If it involves sensitive or anonymous topics — suggest keeping it off: "For sensitive topics, participants may be more candid without seeing others' responses. I'll leave cross-pollination off."
-- Otherwise — ask:
+- Otherwise — use `AskUserQuestion`:
 
-> Will there be 3 or more participants? Cross-pollination shares emerging ideas between participant threads as people contribute — it's great for brainstorming. Enable it?
+  - **Question:** "Enable cross-pollination? It shares emerging ideas between participant threads as people contribute."
+  - **Header:** "Cross-poll"
+  - **Options:**
+    - Label: "Enable (Recommended)" or "Enable", Description: "Participants see highlights from other threads — great for brainstorming and building on each other's ideas" *(use "Recommended" for brainstorming/divergent sessions)*
+    - Label: "Disable", Description: "Each participant converses privately with the facilitator — better for sensitive topics or small groups"
 
-If the user says yes to 3+ participants, apply the **Cross-Pollination Recommendation** logic from Session Design Expertise to decide how strongly to recommend it (strongly for brainstorming, suggest as option for other types).
+If the user says yes to 3+ participants, apply the **Cross-Pollination Recommendation** logic from Session Design Expertise to decide whether to mark Enable as "(Recommended)".
 
 Wait for the user's response.
 
 **Step 8 — Confirm:**
 
-Present a summary of all gathered fields:
+Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
-> Here's your session:
+> Here's your session design:
 >
 >     Topic:              {topic}
 >     Template:           {template name or "Custom"}
@@ -154,10 +167,15 @@ Present a summary of all gathered fields:
 >     Context:            {context or "None"}
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
->
-> Create this session?
 
-Wait for confirmation. If the user wants to change something, go back to that specific step.
+- **Question:** "Ready to create this session?"
+- **Header:** "Confirm"
+- **Options:**
+  - Label: "Create session", Description: "Launch the session and get a shareable join URL"
+  - Label: "Edit something", Description: "Go back and change a specific field"
+  - Label: "Cancel", Description: "Discard and start over"
+
+If the user picks "Edit something", ask which field to change and go back to that specific step.
 
 **Step 9 — Generate Facilitation Prompt:**
 
@@ -242,11 +260,15 @@ The user provided a topic in `$ARGUMENTS`. Skip the intent and topic questions a
 
 **Step 1 — Template Match:**
 
-Using the topic text and the **Template Matching** reference table, suggest the best-matching template. If no template matches well, proceed freeform without suggesting one.
+Using the topic text and the **Template Matching** reference table, identify the best-matching template. If no template matches well, proceed freeform without asking.
 
-Ask:
+If a template matches, use `AskUserQuestion`:
 
-> I'd suggest using the {template name} template — {1-2 sentence explanation}. Use it, or go freeform?
+- **Question:** "Which session format works best for '{topic}'?"
+- **Header:** "Template"
+- **Options:**
+  - Label: "{template name} (Recommended)", Description: "{1-2 sentence explanation}"
+  - Label: "Freeform", Description: "No template — I'll design the session structure from your goal"
 
 Wait for the user's response.
 
@@ -266,9 +288,9 @@ Ask about context, critical question, and cross-pollination only if relevant. If
 
 **Step 4 — Confirm & Create:**
 
-Present a summary of all gathered fields:
+Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
-> Here's your session:
+> Here's your session design:
 >
 >     Topic:              {topic}
 >     Template:           {template name or "Freeform"}
@@ -276,10 +298,15 @@ Present a summary of all gathered fields:
 >     Context:            {context or "None"}
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
->
-> Create this session?
 
-Wait for confirmation. If the user wants to change something, go back to that step.
+- **Question:** "Ready to create this session?"
+- **Header:** "Confirm"
+- **Options:**
+  - Label: "Create session", Description: "Launch the session and get a shareable join URL"
+  - Label: "Edit something", Description: "Go back and change a specific field"
+  - Label: "Cancel", Description: "Discard and start over"
+
+If the user picks "Edit something", ask which field to change and go back to that step.
 
 **Generate the facilitation prompt** using the same approach as Mode 1 Step 9 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
 
