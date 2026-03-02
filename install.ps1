@@ -2,7 +2,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$RepoUrl = "https://raw.githubusercontent.com/harmonicabot/harmonica-chat/main"
+$RepoUrl = "https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master"
 $ClaudeDir = "$env:USERPROFILE\.claude"
 
 Write-Host "Installing harmonica-chat..."

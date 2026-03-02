@@ -3,7 +3,7 @@
 
 set -e
 
-REPO_URL="https://raw.githubusercontent.com/harmonicabot/harmonica-chat/main"
+REPO_URL="https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master"
 CLAUDE_DIR="$HOME/.claude"
 
 echo "Installing harmonica-chat..."
