@@ -1,4 +1,4 @@
-<!-- harmonica-chat v2.3.0 -->
+<!-- harmonica-chat v2.4.0 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -17,9 +17,9 @@ Fetch the latest version from GitHub to check if this command is up to date:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md | head -1
 ```
 
-Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.3.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.4.0` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.3.0`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.4.0`). Run this to update:
 > ```
 > curl -sL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md -o ~/.claude/commands/harmonica-chat.md
 > ```
@@ -119,7 +119,10 @@ Ask:
 
 > What should this session achieve? What decisions or insights do you want at the end?
 
-Wait for the user's response. Apply the **Goal Quality** nudge from Session Design Expertise below: if the goal is vague, ask for specificity. If it contains too many goals, suggest splitting into separate sessions.
+Wait for the user's response. Apply goal quality checks:
+
+1. **Goal Quality nudge** — if the goal is vague, ask for specificity. If it contains too many goals, suggest splitting. (See Session Design Expertise below.)
+2. **Framing challenge** — if the goal assumes a specific solution or approach (e.g., "Build a mobile app for X", "Migrate to microservices"), gently challenge the framing before accepting it: "You've framed this as *building X* — is that the decided approach, or should the session also explore whether that's the right path? Sometimes the framing itself is worth questioning." If the user confirms their framing is intentional, accept it and move on. Don't push more than once.
 
 **Step 5 — Context:**
 
@@ -135,7 +138,12 @@ Ask:
 
 > Is there a specific question participants MUST address in this session? Think of it as: what would make this session a failure if it goes unanswered? For example, "Should we pursue option A or B?" or "What's the biggest risk we're ignoring?" (You can skip this)
 
-Wait for the user's response. If the user skips it and you think one would help, gently suggest one. Don't push if they decline.
+Wait for the user's response. Then apply **constraint discovery** — a short Socratic follow-up to help surface constraints the user may not have articulated:
+
+- If the user **provided** a critical question: ask one follow-up probe based on what they said. For example: "Got it. Is there anything that's off the table — a constraint participants should know about upfront?" or "Are there stakeholders or perspectives that must be represented for this to succeed?" Accept whatever they say (including "no, that's it") and move on.
+- If the user **skipped**: based on the topic and goal, suggest a critical question and one constraint. For example: "Based on your goal, the key question might be '{suggested question}'. And one constraint worth stating: {suggested constraint}. Want to add either of these, or skip?" Don't push if they decline.
+
+Keep this to one follow-up exchange — don't loop.
 
 **Step 7 — Cross-Pollination:**
 
@@ -175,7 +183,22 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
   - Label: "Edit something", Description: "Go back and change a specific field"
   - Label: "Cancel", Description: "Discard and start over"
 
-If the user picks "Edit something", ask which field to change and go back to that specific step.
+If the user picks "Edit something", ask which field to change and go back to that specific step. When returning to the confirm step after an edit, highlight what changed using diff formatting:
+
+> Updated session design:
+>
+>     Topic:              {topic}
+>     Template:           {template}
+>     Goal:
+> ```diff
+> - {old goal}
+> + {new goal}
+> ```
+>     Context:            {context or "None"}
+>     Critical question:  {critical or "None"}
+>     Cross-pollination:  {Yes/No}
+
+Only show diff formatting for the field(s) that actually changed. Unchanged fields display normally.
 
 **Step 9 — Generate Facilitation Prompt:**
 
@@ -306,7 +329,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
   - Label: "Edit something", Description: "Go back and change a specific field"
   - Label: "Cancel", Description: "Discard and start over"
 
-If the user picks "Edit something", ask which field to change and go back to that step.
+If the user picks "Edit something", ask which field to change and go back to that step. When returning to confirm after an edit, use diff formatting to highlight what changed (same approach as Mode 1 Step 8).
 
 **Generate the facilitation prompt** using the same approach as Mode 1 Step 9 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
 
@@ -556,6 +579,7 @@ Apply these as soft nudges during the guided flow. Never force them — if the u
 
 - **Too vague** (e.g., "Discuss the product") — Ask for specificity: "What decisions should come out of this? e.g., 'Decide which 3 features to prioritize for Q2'"
 - **Too many goals** — Suggest splitting: "A focused session with one clear goal gets better results. Want to split this into two sessions?"
+- **Assumes a solution** (e.g., "Build a mobile app") — Challenge the framing: "Is building an app the decided approach, or should the session explore whether that's the right path?" Accept if the user confirms.
 - **Well-formed** — Confirm and move on. Don't over-engineer what's already good.
 
 ### Context Calibration
@@ -574,8 +598,9 @@ Apply these as soft nudges during the guided flow. Never force them — if the u
 
 ### Critical Question
 
-- If the user hasn't set one and the session would benefit from focus, gently suggest: "Is there a specific question participants must address? Something that would make this session a failure if left unanswered?"
-- Don't push if they skip it — it's optional.
+- If the user hasn't set one and the session would benefit from focus, suggest one based on the topic and goal.
+- After the user responds (whether they set one or skipped), ask one constraint-discovery probe: "Is there anything off the table, or a constraint participants should know upfront?"
+- Don't push — one follow-up is enough. Accept "no" gracefully.
 
 ### What NOT to Do
 
