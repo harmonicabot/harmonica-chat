@@ -1,4 +1,4 @@
-<!-- harmonica-chat v2.1.0 -->
+<!-- harmonica-chat v2.2.0 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -17,9 +17,9 @@ Fetch the latest version from GitHub to check if this command is up to date:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md | head -1
 ```
 
-Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.1.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.2.0` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.1.0`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.2.0`). Run this to update:
 > ```
 > curl -sL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md -o ~/.claude/commands/harmonica-chat.md
 > ```
@@ -70,9 +70,17 @@ Parse `$ARGUMENTS` to determine which mode to enter:
 
 Walk the user through designing a session one question at a time. CRITICAL: Ask each question individually. Wait for the user's response before moving to the next question. Never bundle multiple questions together.
 
+**Intro:**
+
+Start with a brief orientation so the user knows what to expect:
+
+> I'll help you **design** a Harmonica session. We'll go through a few questions — topic, goal, context, and a couple of options. Once everything looks good, I'll create the session and give you a shareable link for participants to join.
+>
+> The actual conversation happens in the Harmonica web app — each participant gets their own 1-on-1 chat with an AI facilitator.
+
 **Step 1 — Intent:**
 
-Start with:
+Ask:
 
 > What kind of conversation do you want to facilitate? For example: team retrospective, product feedback, brainstorming, stakeholder alignment, research interviews...
 
@@ -116,7 +124,7 @@ Wait for the user's response. Apply the **Context Calibration** nudge: if too li
 
 Ask:
 
-> Is there a specific question that MUST be answered, or a constraint to keep in mind? Think of it as: if this question goes unanswered, the session failed. (You can skip this)
+> Is there a specific question participants MUST address in this session? Think of it as: what would make this session a failure if it goes unanswered? For example, "Should we pursue option A or B?" or "What's the biggest risk we're ignoring?" (You can skip this)
 
 Wait for the user's response. If the user skips it and you think one would help, gently suggest one. Don't push if they decline.
 
@@ -219,12 +227,12 @@ If the `create_session` call fails with a template validation error, retry witho
 
 On success, display:
 
-> Session created!
+> Your session is ready!
 >
 >     Topic:    {topic}
 >     Join URL: {join_url}
 >
-> Share the join URL with participants — each person gets their own 1-on-1 conversation with the AI facilitator.
+> Share the join URL with participants. The conversation happens in the Harmonica web app — each person gets their own private 1-on-1 chat with the AI facilitator you just designed.
 
 Then proceed to the **Invitation Flow** section.
 
@@ -288,12 +296,12 @@ If the `create_session` call fails with a template validation error, retry witho
 
 On success, display:
 
-> Session created!
+> Your session is ready!
 >
 >     Topic:    {topic}
 >     Join URL: {join_url}
 >
-> Share the join URL with participants — each person gets their own 1-on-1 conversation with the AI facilitator.
+> Share the join URL with participants. The conversation happens in the Harmonica web app — each person gets their own private 1-on-1 chat with the AI facilitator you just designed.
 
 Then proceed to the **Invitation Flow** section.
 
@@ -539,7 +547,7 @@ Apply these as soft nudges during the guided flow. Never force them — if the u
 
 ### Critical Question
 
-- If the user hasn't set one and the session would benefit from focus, gently suggest: "Is there a question that, if unanswered, means the session failed? That's your critical question."
+- If the user hasn't set one and the session would benefit from focus, gently suggest: "Is there a specific question participants must address? Something that would make this session a failure if left unanswered?"
 - Don't push if they skip it — it's optional.
 
 ### What NOT to Do
