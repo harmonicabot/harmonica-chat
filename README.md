@@ -83,6 +83,8 @@ Reads the project's CLAUDE.md and recent git history to auto-generate session co
 - **Session design expertise** — goal quality nudges, context calibration, cross-pollination recommendations
 - **Project-aware context** — reads CLAUDE.md and git history to auto-fill session context
 - **Full session lifecycle** — status, check, summary, and follow-up commands
+- **Telegram distribution** — sessions can be announced to Telegram groups via the Harmonica bot (v2.5.0)
+- **Pre-session questions** — configure what participants answer before the conversation (e.g. Name, Role); defaults are smart: Name only for Telegram, Name + Email for web (v2.8.0)
 - **Invitation drafting** with tone adapted to session type, plus integration with communication tools (Zapier, Slack) when available
 - **Community participation feed** integration for publishing sessions to community dashboards
 
