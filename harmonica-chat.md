@@ -1,4 +1,4 @@
-<!-- harmonica-chat v2.6.0 -->
+<!-- harmonica-chat v2.7.0 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -281,6 +281,7 @@ Call the `create_session` MCP tool with the gathered fields:
 - `critical` (if provided)
 - `cross_pollination` (true/false)
 - `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
+- `questions` (always include — array: `[{ "text": "What is your name?" }]` by default. Add more if the session context calls for it, e.g. `{ "text": "What is your role?" }` for team sessions)
 
 If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
@@ -367,6 +368,7 @@ Call the `create_session` MCP tool with the gathered fields:
 - `critical` (if provided)
 - `cross_pollination` (true/false)
 - `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
+- `questions` (always include — array: `[{ "text": "What is your name?" }]` by default. Add more if the session context calls for it, e.g. `{ "text": "What is your role?" }` for team sessions)
 
 If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
