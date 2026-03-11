@@ -1,4 +1,4 @@
-<!-- harmonica-chat v2.4.0 -->
+<!-- harmonica-chat v2.5.0 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -17,9 +17,9 @@ Fetch the latest version from GitHub to check if this command is up to date:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md | head -1
 ```
 
-Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.4.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.5.0` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.4.0`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.5.0`). Run this to update:
 > ```
 > curl -sL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md -o ~/.claude/commands/harmonica-chat.md
 > ```
@@ -163,7 +163,23 @@ If the user says yes to 3+ participants, apply the **Cross-Pollination Recommend
 
 Wait for the user's response.
 
-**Step 8 — Confirm:**
+**Step 8 — Telegram Distribution:**
+
+Check if the user has Telegram groups registered by calling `list_telegram_groups`. If the tool is not available or returns no groups, skip this step silently and proceed to Step 9.
+
+If groups are found, use `AskUserQuestion`:
+
+- **Question:** "Distribute this session to a Telegram group? The bot will announce it and participants can join via DM."
+- **Header:** "Telegram"
+- **Options:**
+  - One option per group: Label: "{group_name}", Description: "Telegram group (ID: {group_id})"
+  - Final option: Label: "Skip", Description: "Don't distribute to Telegram — share the link yourself"
+
+If the user selects a group, store `distribution: [{ channel: "telegram", group_id: "{selected_group_id}" }]` for inclusion in the confirm summary and `create_session` call.
+
+Wait for the user's response.
+
+**Step 9 — Confirm:**
 
 Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
@@ -175,6 +191,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 >     Context:            {context or "None"}
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
+>     Telegram:           {group_name or "None"}
 
 - **Question:** "Ready to create this session?"
 - **Header:** "Confirm"
@@ -197,10 +214,11 @@ If the user picks "Edit something", ask which field to change and go back to tha
 >     Context:            {context or "None"}
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
+>     Telegram:           {group_name or "None"}
 
 Only show diff formatting for the field(s) that actually changed. Unchanged fields display normally.
 
-**Step 9 — Generate Facilitation Prompt:**
+**Step 10 — Generate Facilitation Prompt:**
 
 Before creating the session, generate a tailored facilitation prompt so the AI facilitator understands the specific session context. Without this, the facilitator only gets a generic "skilled facilitator" system prompt that knows nothing about the topic.
 
@@ -253,16 +271,25 @@ Adapt the number of steps, question themes, and tone to match the session's purp
 
 Do NOT show the generated prompt to the user unless they ask. Just generate it internally for the `create_session` call.
 
-**Step 10 — Create:**
+**Step 10b — Facilitation Prompt for Telegram Distribution:**
+
+If distribution is set to a Telegram group, add this guideline to the generated facilitation prompt's Guidelines section:
+
+```
+- This session is distributed via Telegram. Some participants may join from mobile devices — keep messages concise and mobile-friendly.
+```
+
+**Step 11 — Create:**
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
 - `goal` (required)
-- `prompt` (the facilitation prompt generated in Step 9)
+- `prompt` (the facilitation prompt generated in Step 10)
 - `template_id` (if a template was chosen — use the exact ID from the Template Matching table)
 - `context` (if provided)
 - `critical` (if provided)
 - `cross_pollination` (true/false)
+- `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
 
 If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
@@ -274,6 +301,10 @@ On success, display:
 >     Join URL: {join_url}
 >
 > Share the join URL with participants. The conversation happens in the Harmonica web app — each person gets their own private 1-on-1 chat with the AI facilitator you just designed.
+
+If distribution was set to a Telegram group, also display:
+
+> The Harmonica Telegram bot will announce this session in **{group_name}**. Participants can join directly from the group chat.
 
 Then proceed to the **Invitation Flow** section.
 
@@ -305,9 +336,11 @@ Wait for the user's response. Apply goal quality nudges.
 
 **Step 3 — Remaining Questions:**
 
-Ask about context, critical question, and cross-pollination only if relevant. If the topic and goal give enough signal, you can propose sensible defaults and ask for confirmation rather than asking each one individually. For example:
+Ask about context, critical question, cross-pollination, and Telegram distribution only if relevant. If the topic and goal give enough signal, you can propose sensible defaults and ask for confirmation rather than asking each one individually. For example:
 
 > I'll skip the context since the topic is self-explanatory, and enable cross-pollination since this is a brainstorming session with likely multiple participants. Sound good?
+
+**Telegram distribution:** Call `list_telegram_groups`. If groups exist, ask the user whether to distribute to one (same `AskUserQuestion` pattern as Mode 1 Step 8). If no groups or tool unavailable, skip silently.
 
 **Step 4 — Confirm & Create:**
 
@@ -321,6 +354,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 >     Context:            {context or "None"}
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
+>     Telegram:           {group_name or "None"}
 
 - **Question:** "Ready to create this session?"
 - **Header:** "Confirm"
@@ -329,9 +363,9 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
   - Label: "Edit something", Description: "Go back and change a specific field"
   - Label: "Cancel", Description: "Discard and start over"
 
-If the user picks "Edit something", ask which field to change and go back to that step. When returning to confirm after an edit, use diff formatting to highlight what changed (same approach as Mode 1 Step 8).
+If the user picks "Edit something", ask which field to change and go back to that step. When returning to confirm after an edit, use diff formatting to highlight what changed (same approach as Mode 1 Step 9).
 
-**Generate the facilitation prompt** using the same approach as Mode 1 Step 9 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
+**Generate the facilitation prompt** using the same approach as Mode 1 Step 10 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
@@ -341,6 +375,7 @@ Call the `create_session` MCP tool with the gathered fields:
 - `context` (if provided)
 - `critical` (if provided)
 - `cross_pollination` (true/false)
+- `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
 
 If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
@@ -352,6 +387,10 @@ On success, display:
 >     Join URL: {join_url}
 >
 > Share the join URL with participants. The conversation happens in the Harmonica web app — each person gets their own private 1-on-1 chat with the AI facilitator you just designed.
+
+If distribution was set to a Telegram group, also display:
+
+> The Harmonica Telegram bot will announce this session in **{group_name}**. Participants can join directly from the group chat.
 
 Then proceed to the **Invitation Flow** section.
 
@@ -457,7 +496,7 @@ Present the proposal:
 >
 > Want to create this, or adjust anything?
 
-If confirmed, **generate a facilitation prompt** using the same approach as Mode 1 Step 9 (Generate Facilitation Prompt), incorporating the previous session's findings into the context. Then call `create_session` with the proposed fields plus the generated `prompt`, display the result, and proceed to **Invitation Flow**.
+If confirmed, **generate a facilitation prompt** using the same approach as Mode 1 Step 10 (Generate Facilitation Prompt), incorporating the previous session's findings into the context. Then call `create_session` with the proposed fields plus the generated `prompt` and `distribution` (if a Telegram group was selected), display the result, and proceed to **Invitation Flow**.
 
 ## Invitation Flow
 
@@ -604,7 +643,7 @@ Apply these as soft nudges during the guided flow. Never force them — if the u
 
 ### What NOT to Do
 
-- **Don't skip prompt generation** — the Harmonica API does NOT generate tailored prompts; it falls back to a generic facilitator. Always generate a session-specific facilitation prompt using the gathered fields (see Mode 1, Step 9).
+- **Don't skip prompt generation** — the Harmonica API does NOT generate tailored prompts; it falls back to a generic facilitator. Always generate a session-specific facilitation prompt using the gathered fields (see Mode 1, Step 10).
 - **Don't use non-English metadata** — topic, goal, context, critical, and prompt must all be in English. Translate if the conversation is in another language.
 - **Don't override template structure** — if a template is selected, use its structure as a guide for your generated prompt's step themes, but still generate the prompt (templates provide defaults for goal/context, not facilitation instructions).
 - **Don't push templates on freeform users** — if someone wants a custom session, help them design it without a template.
