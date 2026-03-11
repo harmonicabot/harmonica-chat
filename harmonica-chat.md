@@ -1,4 +1,4 @@
-<!-- harmonica-chat v2.7.0 -->
+<!-- harmonica-chat v2.8.0 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -179,7 +179,27 @@ If the user selects a group, store `distribution: [{ channel: "telegram", group_
 
 Wait for the user's response.
 
-**Step 9 — Confirm:**
+**Step 9 — Pre-Session Questions:**
+
+Pre-session questions are shown to participants before the conversation starts (e.g. name, role, team). Propose sensible defaults based on the session context:
+
+- **Telegram distribution**: Default to just `Name` (the bot already has the user's Telegram ID — email is unnecessary)
+- **Web-only (no Telegram)**: Default to `Name` and `Email` (matching the web app defaults)
+- **Team/organizational sessions**: Consider adding `Role` or `Team`
+
+Present the defaults and ask if they want to adjust:
+
+> Pre-session questions (participants answer these before the conversation):
+> 1. Name
+> {2. Email — only if no Telegram distribution}
+>
+> Want to add, remove, or change any questions? Or keep these defaults?
+
+If the user wants to customize, adjust the list accordingly. If they say "none" or "skip questions", pass an empty array. Accept whatever they decide — don't push.
+
+Store the final questions list for inclusion in the `create_session` call.
+
+**Step 10 — Confirm:**
 
 Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
@@ -192,6 +212,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
 >     Telegram:           {group_name or "None"}
+>     Questions:          {comma-separated list or "None"}
 
 - **Question:** "Ready to create this session?"
 - **Header:** "Confirm"
@@ -215,10 +236,11 @@ If the user picks "Edit something", ask which field to change and go back to tha
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
 >     Telegram:           {group_name or "None"}
+>     Questions:          {comma-separated list or "None"}
 
 Only show diff formatting for the field(s) that actually changed. Unchanged fields display normally.
 
-**Step 10 — Generate Facilitation Prompt:**
+**Step 11 — Generate Facilitation Prompt:**
 
 Before creating the session, generate a tailored facilitation prompt so the AI facilitator understands the specific session context. Without this, the facilitator only gets a generic "skilled facilitator" system prompt that knows nothing about the topic.
 
@@ -262,7 +284,7 @@ Design the flow questions to match the session's purpose:
 
 Do NOT show the generated prompt to the user unless they ask. Just generate it internally for the `create_session` call.
 
-**Step 10b — Facilitation Prompt for Telegram Distribution:**
+**Step 11b — Facilitation Prompt for Telegram Distribution:**
 
 If distribution is set to a Telegram group, add this guideline to the generated facilitation prompt's Guidelines section:
 
@@ -270,18 +292,18 @@ If distribution is set to a Telegram group, add this guideline to the generated 
 - This session is distributed via Telegram. Some participants may join from mobile devices — keep messages concise and mobile-friendly.
 ```
 
-**Step 11 — Create:**
+**Step 12 — Create:**
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
 - `goal` (required)
-- `prompt` (the facilitation prompt generated in Step 10)
+- `prompt` (the facilitation prompt generated in Step 11)
 - `template_id` (if a template was chosen — use the exact ID from the Template Matching table)
 - `context` (if provided)
 - `critical` (if provided)
 - `cross_pollination` (true/false)
 - `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
-- `questions` (always include — array: `[{ "text": "Name" }, { "text": "Email" }]` by default, matching the web app defaults. Add more if the session context calls for it, e.g. `{ "text": "What is your role?" }` for team sessions)
+- `questions` (the list from Step 9 — array of `{ "text": "..." }` objects, or omit if the host chose no questions)
 
 If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
@@ -357,7 +379,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
 If the user picks "Edit something", ask which field to change and go back to that step. When returning to confirm after an edit, use diff formatting to highlight what changed (same approach as Mode 1 Step 9).
 
-**Generate the facilitation prompt** using the same approach as Mode 1 Step 10 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
+**Generate the facilitation prompt** using the same approach as Mode 1 Step 11 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
@@ -368,7 +390,7 @@ Call the `create_session` MCP tool with the gathered fields:
 - `critical` (if provided)
 - `cross_pollination` (true/false)
 - `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
-- `questions` (always include — array: `[{ "text": "Name" }, { "text": "Email" }]` by default, matching the web app defaults. Add more if the session context calls for it, e.g. `{ "text": "What is your role?" }` for team sessions)
+- `questions` (same defaults as Mode 1 Step 9: just `Name` for Telegram sessions, `Name` + `Email` for web-only. Ask the host if they want to adjust.)
 
 If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
@@ -489,7 +511,7 @@ Present the proposal:
 >
 > Want to create this, or adjust anything?
 
-If confirmed, **generate a facilitation prompt** using the same approach as Mode 1 Step 10 (Generate Facilitation Prompt), incorporating the previous session's findings into the context. Then call `create_session` with the proposed fields plus the generated `prompt` and `distribution` (if a Telegram group was selected), display the result, and proceed to **Invitation Flow**.
+If confirmed, **generate a facilitation prompt** using the same approach as Mode 1 Step 11 (Generate Facilitation Prompt), incorporating the previous session's findings into the context. Then call `create_session` with the proposed fields plus the generated `prompt` and `distribution` (if a Telegram group was selected), display the result, and proceed to **Invitation Flow**.
 
 ## Invitation Flow
 
@@ -636,7 +658,7 @@ Apply these as soft nudges during the guided flow. Never force them — if the u
 
 ### What NOT to Do
 
-- **Don't skip prompt generation** — the Harmonica API does NOT generate tailored prompts; it falls back to a generic facilitator. Always generate a session-specific facilitation prompt using the gathered fields (see Mode 1, Step 10).
+- **Don't skip prompt generation** — the Harmonica API does NOT generate tailored prompts; it falls back to a generic facilitator. Always generate a session-specific facilitation prompt using the gathered fields (see Mode 1, Step 11).
 - **Don't generate verbose prompts** — NEVER include sub-questions, multi-part questions, or "Step X of Y" structures. The facilitator must ask ONE question per message in 2-3 sentences max. Participants are on mobile and won't write essays. Think chat, not survey.
 - **Don't use non-English metadata** — topic, goal, context, critical, and prompt must all be in English. Translate if the conversation is in another language.
 - **Don't override template structure** — if a template is selected, use its structure as a guide for your generated prompt's step themes, but still generate the prompt (templates provide defaults for goal/context, not facilitation instructions).
