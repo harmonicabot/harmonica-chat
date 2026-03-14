@@ -5,7 +5,7 @@ Design, create, and manage Harmonica deliberation sessions through conversation.
 
 ## Arguments
 
-- `$ARGUMENTS` — optional. Can be empty (guided mode), a topic for quick creation, or a lifecycle command (`status`, `check`, `summary`, `follow-up`).
+- `$ARGUMENTS` — optional. Can be empty (guided mode), a topic for quick creation, or a lifecycle command (`status`, `check`, `summary`, `follow-up`, `edit`).
 
 ## Prerequisites
 
@@ -59,7 +59,7 @@ All session metadata — topic, goal, context, critical question, and facilitati
 Parse `$ARGUMENTS` to determine which mode to enter:
 
 1. **Empty or no arguments** — Go to **Mode 1: Guided Session Design**
-2. **First word is an action keyword** (`status`, `check`, `summary`, `follow-up`) — Go to **Mode 3: Lifecycle Commands**
+2. **First word is an action keyword** (`status`, `check`, `summary`, `follow-up`, `edit`) — Go to **Mode 3: Lifecycle Commands**
    - Everything after the keyword is the session reference (topic text or partial match)
 3. **Anything else** (topic text, flags, etc.) — Go to **Mode 2: Accelerated Creation**
    - Extract the topic: first quoted string, or all text before the first `--` flag
@@ -487,6 +487,29 @@ If there are no sessions, say: "You don't have any sessions yet. Run `/harmonica
 2. Call `get_summary` with the session ID
 3. If a summary exists, display it formatted clearly
 4. If no summary yet: "No summary yet — the session has {N} participants still in conversation. Want me to show you the raw responses instead, or check back later?"
+
+#### `edit <session reference>` — Edit Session Metadata
+
+1. Resolve the session using `search_sessions` (same matching and disambiguation logic as `check`)
+2. Call `get_session` with the matched session ID to show current metadata
+3. Present the current session fields:
+
+> **"{Topic}"** — current settings:
+>
+>     Topic:              {topic}
+>     Goal:               {goal}
+>     Context:            {context or "None"}
+>     Critical question:  {critical or "None"}
+>     Prompt:             {first 100 chars of prompt}...
+>
+> What would you like to change?
+
+4. Based on what the user wants to change, gather the new value(s)
+5. Call `update_session` with only the changed fields (topic, goal, context, critical, prompt)
+6. If updating the prompt, offer to regenerate it from scratch using the same approach as Mode 1 Step 11 (Generate Facilitation Prompt) with the current session metadata, or let the user provide specific edits
+7. Confirm: "Session updated. Changes take effect for new participants immediately."
+
+**Note:** `update_session` is a deferred tool — it may not appear in the initial tool list. Search for it explicitly if not visible.
 
 #### `follow-up <session reference>` — Design a Follow-Up Session
 
