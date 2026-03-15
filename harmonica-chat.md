@@ -5,7 +5,7 @@ Design, create, and manage Harmonica deliberation sessions through conversation.
 
 ## Arguments
 
-- `$ARGUMENTS` — optional. Can be empty (guided mode), a topic for quick creation, or a lifecycle command (`status`, `check`, `summary`, `follow-up`, `edit`).
+- `$ARGUMENTS` — optional. Can be empty (guided mode), a topic for quick creation, or a lifecycle command (`status`, `check`, `summary`, `follow-up`, `edit`, `review`).
 
 ## Prerequisites
 
@@ -59,7 +59,7 @@ All session metadata — topic, goal, context, critical question, and facilitati
 Parse `$ARGUMENTS` to determine which mode to enter:
 
 1. **Empty or no arguments** — Go to **Mode 1: Guided Session Design**
-2. **First word is an action keyword** (`status`, `check`, `summary`, `follow-up`, `edit`) — Go to **Mode 3: Lifecycle Commands**
+2. **First word is an action keyword** (`status`, `check`, `summary`, `follow-up`, `edit`, `review`) — Go to **Mode 3: Lifecycle Commands**
    - Everything after the keyword is the session reference (topic text or partial match)
 3. **Anything else** (topic text, flags, etc.) — Go to **Mode 2: Accelerated Creation**
    - Extract the topic: first quoted string, or all text before the first `--` flag
@@ -510,6 +510,32 @@ If there are no sessions, say: "You don't have any sessions yet. Run `/harmonica
 7. Confirm: "Session updated. Changes take effect for new participants immediately."
 
 **Note:** `update_session` is a deferred tool — it may not appear in the initial tool list. Search for it explicitly if not visible.
+
+#### `review <session reference>` — Review Facilitation Quality and Improve Prompts
+
+Analyze participant transcripts to identify what worked, what didn't, and suggest specific prompt improvements.
+
+1. Resolve the session using `search_sessions`
+2. Call `get_responses` to pull all participant transcripts
+3. For each participant with 3+ user messages, analyze the full conversation for:
+   - Where participants disengaged (short answers, "not sure", drop-offs)
+   - Where they engaged deeply (long responses, follow-up questions)
+   - Cross-pollination: did it trigger? Was it relevant, well-timed, concise?
+   - Edge cases: meta questions, session ending, fourth-wall breaks
+   - Goal alignment: did the conversation serve the session's purpose?
+4. Aggregate patterns across transcripts — focus on issues that appeared in 2+ conversations
+5. For each pattern, propose a specific prompt fix:
+
+> **Issue:** [description] ([N/M] participants)
+> **Example:** [participant] said "[quote]" in response to "[facilitator question]"
+> **Current prompt:** "[text causing the issue]"
+> **Suggested fix:** "[new text]"
+
+6. Present all findings, then ask:
+   - "Apply these prompt changes?" → use `update_session`
+   - "Create Linear issues for systemic problems?" → create issues with proper project
+
+**Note:** For a more detailed analysis, the `/review-session` skill provides the full framework. This command is a lighter version integrated into the harmonica-chat flow.
 
 #### `follow-up <session reference>` — Design a Follow-Up Session
 
