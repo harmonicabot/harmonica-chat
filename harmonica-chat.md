@@ -1,4 +1,4 @@
-<!-- harmonica-chat v2.8.0 -->
+<!-- harmonica-chat v2.8.1 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -167,7 +167,9 @@ Wait for the user's response.
 
 Check if the user has Telegram groups registered by calling `list_telegram_groups`. If the tool is not available or returns no groups, skip this step silently and proceed to Step 9.
 
-If groups are found, use `AskUserQuestion`:
+If groups are found, ALWAYS present ALL groups and let the user choose. NEVER skip this step or filter groups based on whether their names seem relevant to the session topic — the user decides which group to use.
+
+Use `AskUserQuestion`:
 
 - **Question:** "Distribute this session to a Telegram group? The bot will announce it and participants can join via DM."
 - **Header:** "Telegram"
@@ -354,7 +356,7 @@ Ask about context, critical question, cross-pollination, and Telegram distributi
 
 > I'll skip the context since the topic is self-explanatory, and enable cross-pollination since this is a brainstorming session with likely multiple participants. Sound good?
 
-**Telegram distribution:** Call `list_telegram_groups`. If groups exist, ask the user whether to distribute to one (same `AskUserQuestion` pattern as Mode 1 Step 8). If no groups or tool unavailable, skip silently.
+**Telegram distribution:** Call `list_telegram_groups`. If groups exist, ALWAYS present ALL groups via `AskUserQuestion` (same pattern as Mode 1 Step 8) — never filter or skip based on group name relevance. If no groups or tool unavailable, skip silently.
 
 **Step 4 — Confirm & Create:**
 
