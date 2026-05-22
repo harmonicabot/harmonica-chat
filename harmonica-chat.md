@@ -1,4 +1,4 @@
-<!-- harmonica-chat v2.9.0 -->
+<!-- harmonica-chat v2.10.0 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -17,9 +17,9 @@ Fetch the latest version from GitHub to check if this command is up to date:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md | head -1
 ```
 
-Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.9.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.10.0` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.9.0`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.10.0`). Run this to update:
 > ```
 > curl -sL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md -o ~/.claude/commands/harmonica-chat.md
 > ```
@@ -181,9 +181,34 @@ Store the answer as `widgets_enabled: true/false` for inclusion in the confirm s
 
 Wait for the user's response.
 
-**Step 9 — Telegram Distribution:**
+**Step 9 — Results Visibility:**
 
-Check if the user has Telegram groups registered by calling `list_telegram_groups`. If the tool is not available or returns no groups, skip this step silently and proceed to Step 9.
+Decide who can see aggregated session results after participants finish. Three values:
+
+- **`host`** — only the session owner can see results. Defaults for private review.
+- **`participants`** — anyone who completed the session sees what others said (drives the end-of-chat "See what others said" link).
+- **`public`** — anyone with the session URL can see results without participating. Use for public sense-making.
+
+Apply these defaults:
+
+- If the topic involves sensitive disclosures, internal reviews, or 1-on-1 coaching — default to `host` and skip the question.
+- If the session is **distributed to Telegram or shared publicly** (will likely be true if Step 8 cross-pollination is on or distribution is set in Step 10) — strongly suggest `participants`.
+- Otherwise — use `AskUserQuestion`:
+
+  - **Question:** "Who can see the session results once participants finish?"
+  - **Header:** "Results"
+  - **Options:**
+    - Label: "Participants (Recommended)" or "Participants", Description: "Anyone who completed the session can see what others said. Drives the end-of-chat 'See what others said' link." *(use "Recommended" for distributed / cross-pollinated sessions)*
+    - Label: "Host only", Description: "Only the session owner sees the aggregated results. Participants only see their own conversation."
+    - Label: "Public", Description: "Anyone with the session URL sees results without participating. Use for public sense-making."
+
+Store the answer as `results_visibility: "host" | "participants" | "public"` for inclusion in the confirm summary and `create_session` call. Default to `participants` if the user skipped the question via heuristic.
+
+Wait for the user's response.
+
+**Step 10 — Telegram Distribution:**
+
+Check if the user has Telegram groups registered by calling `list_telegram_groups`. If the tool is not available or returns no groups, skip this step silently and proceed to Step 11.
 
 If groups are found, ALWAYS present ALL groups and let the user choose. NEVER skip this step or filter groups based on whether their names seem relevant to the session topic — the user decides which group to use.
 
@@ -199,7 +224,7 @@ If the user selects a group, store `distribution: [{ channel: "telegram", group_
 
 Wait for the user's response.
 
-**Step 10 — Pre-Session Questions:**
+**Step 11 — Pre-Session Questions:**
 
 Pre-session questions are shown to participants before the conversation starts (e.g. name, role, team). Propose sensible defaults based on the session context:
 
@@ -219,7 +244,7 @@ If the user wants to customize, adjust the list accordingly. If they say "none" 
 
 Store the final questions list for inclusion in the `create_session` call.
 
-**Step 11 — Confirm:**
+**Step 12 — Confirm:**
 
 Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
@@ -232,6 +257,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
 >     Polls and ratings:  {Yes/No}
+>     Results visibility: {host / participants / public}
 >     Telegram:           {group_name or "None"}
 >     Questions:          {comma-separated list or "None"}
 
@@ -257,12 +283,13 @@ If the user picks "Edit something", ask which field to change and go back to tha
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
 >     Polls and ratings:  {Yes/No}
+>     Results visibility: {host / participants / public}
 >     Telegram:           {group_name or "None"}
 >     Questions:          {comma-separated list or "None"}
 
 Only show diff formatting for the field(s) that actually changed. Unchanged fields display normally.
 
-**Step 12 — Generate Facilitation Prompt:**
+**Step 13 — Generate Facilitation Prompt:**
 
 Before creating the session, generate a tailored facilitation prompt so the AI facilitator understands the specific session context. Without this, the facilitator only gets a generic "skilled facilitator" system prompt that knows nothing about the topic.
 
@@ -314,7 +341,7 @@ If distribution is set to a Telegram group, add this guideline to the generated 
 - This session is distributed via Telegram. Some participants may join from mobile devices — keep messages concise and mobile-friendly.
 ```
 
-**Step 13 — Create:**
+**Step 14 — Create:**
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
@@ -325,10 +352,11 @@ Call the `create_session` MCP tool with the gathered fields:
 - `critical` (if provided)
 - `cross_pollination` (true/false)
 - `widgets_enabled` (true/false from Step 8)
+- `results_visibility` ("host" / "participants" / "public" from Step 9 — default "participants" if user wasn't asked)
 - `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
-- `questions` (the list from Step 10 — array of `{ "text": "..." }` objects, or omit if the host chose no questions)
+- `questions` (the list from Step 11 — array of `{ "text": "..." }` objects, or omit if the host chose no questions)
 
-Requires `harmonica-mcp` ≥ 0.5.0 for `widgets_enabled` to be forwarded. If the MCP rejects the field, fall back to omitting it and inform the user that their MCP server is out of date.
+Requires `harmonica-mcp` ≥ 0.6.0 for `widgets_enabled` and `results_visibility` to be forwarded. If the MCP rejects either field, fall back to omitting it and inform the user that their MCP server is out of date.
 
 If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
@@ -375,13 +403,13 @@ Wait for the user's response. Apply goal quality nudges.
 
 **Step 3 — Remaining Questions:**
 
-Ask about context, critical question, cross-pollination, Polls and ratings, and Telegram distribution only if relevant. If the topic and goal give enough signal, you can propose sensible defaults and ask for confirmation rather than asking each one individually. For example:
+Ask about context, critical question, cross-pollination, Polls and ratings, Results visibility, and Telegram distribution only if relevant. If the topic and goal give enough signal, you can propose sensible defaults and ask for confirmation rather than asking each one individually. For example:
 
-> I'll skip the context since the topic is self-explanatory, enable cross-pollination since this is a brainstorming session with likely multiple participants, and leave Polls and ratings off because the session is open-ended exploration. Sound good?
+> I'll skip the context since the topic is self-explanatory, enable cross-pollination since this is a brainstorming session with likely multiple participants, leave Polls and ratings off because the session is open-ended exploration, and set Results visibility to "participants" so completed participants can see what others said. Sound good?
 
-Apply the same defaults as Mode 1 Step 8 for Polls and ratings: enable for prioritisation / scoring / ranking sessions, disable for open-ended exploration.
+Apply the same defaults as Mode 1 Step 8 for Polls and ratings (enable for prioritisation / scoring / ranking) and Mode 1 Step 9 for Results visibility (default `participants`; `host` only if sensitive / internal review; `public` if explicitly public sense-making).
 
-**Telegram distribution:** Call `list_telegram_groups`. If groups exist, ALWAYS present ALL groups via `AskUserQuestion` (same pattern as Mode 1 Step 9) — never filter or skip based on group name relevance. If no groups or tool unavailable, skip silently.
+**Telegram distribution:** Call `list_telegram_groups`. If groups exist, ALWAYS present ALL groups via `AskUserQuestion` (same pattern as Mode 1 Step 10) — never filter or skip based on group name relevance. If no groups or tool unavailable, skip silently.
 
 **Step 4 — Confirm & Create:**
 
@@ -396,6 +424,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
 >     Polls and ratings:  {Yes/No}
+>     Results visibility: {host / participants / public}
 >     Telegram:           {group_name or "None"}
 
 - **Question:** "Ready to create this session?"
@@ -405,9 +434,9 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
   - Label: "Edit something", Description: "Go back and change a specific field"
   - Label: "Cancel", Description: "Discard and start over"
 
-If the user picks "Edit something", ask which field to change and go back to that step. When returning to confirm after an edit, use diff formatting to highlight what changed (same approach as Mode 1 Step 11).
+If the user picks "Edit something", ask which field to change and go back to that step. When returning to confirm after an edit, use diff formatting to highlight what changed (same approach as Mode 1 Step 12).
 
-**Generate the facilitation prompt** using the same approach as Mode 1 Step 12 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
+**Generate the facilitation prompt** using the same approach as Mode 1 Step 13 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
@@ -418,8 +447,9 @@ Call the `create_session` MCP tool with the gathered fields:
 - `critical` (if provided)
 - `cross_pollination` (true/false)
 - `widgets_enabled` (true/false)
+- `results_visibility` ("host" / "participants" / "public" — default "participants")
 - `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
-- `questions` (same defaults as Mode 1 Step 10: just `Name` for Telegram sessions, `Name` + `Email` for web-only. Ask the host if they want to adjust.)
+- `questions` (same defaults as Mode 1 Step 11: just `Name` for Telegram sessions, `Name` + `Email` for web-only. Ask the host if they want to adjust.)
 
 If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
@@ -535,7 +565,7 @@ If there are no sessions, say: "You don't have any sessions yet. Run `/harmonica
 
 4. Based on what the user wants to change, gather the new value(s)
 5. Call `update_session` with only the changed fields (topic, goal, context, critical, prompt)
-6. If updating the prompt, offer to regenerate it from scratch using the same approach as Mode 1 Step 11 (Generate Facilitation Prompt) with the current session metadata, or let the user provide specific edits
+6. If updating the prompt, offer to regenerate it from scratch using the same approach as Mode 1 Step 13 (Generate Facilitation Prompt) with the current session metadata, or let the user provide specific edits
 7. Confirm: "Session updated. Changes take effect for new participants immediately."
 
 **Note:** `update_session` is a deferred tool — it may not appear in the initial tool list. Search for it explicitly if not visible.
@@ -589,7 +619,7 @@ Present the proposal:
 >
 > Want to create this, or adjust anything?
 
-If confirmed, **generate a facilitation prompt** using the same approach as Mode 1 Step 11 (Generate Facilitation Prompt), incorporating the previous session's findings into the context. Then call `create_session` with the proposed fields plus the generated `prompt` and `distribution` (if a Telegram group was selected), display the result, and proceed to **Invitation Flow**.
+If confirmed, **generate a facilitation prompt** using the same approach as Mode 1 Step 13 (Generate Facilitation Prompt), incorporating the previous session's findings into the context. Then call `create_session` with the proposed fields plus the generated `prompt` and `distribution` (if a Telegram group was selected), display the result, and proceed to **Invitation Flow**.
 
 ## Invitation Flow
 
