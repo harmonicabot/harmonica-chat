@@ -1,4 +1,4 @@
-<!-- harmonica-chat v2.8.1 -->
+<!-- harmonica-chat v2.9.0 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -17,9 +17,9 @@ Fetch the latest version from GitHub to check if this command is up to date:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md | head -1
 ```
 
-Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.5.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.9.0` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.5.0`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.9.0`). Run this to update:
 > ```
 > curl -sL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md -o ~/.claude/commands/harmonica-chat.md
 > ```
@@ -163,7 +163,25 @@ If the user says yes to 3+ participants, apply the **Cross-Pollination Recommend
 
 Wait for the user's response.
 
-**Step 8 — Telegram Distribution:**
+**Step 8 — Polls and Ratings:**
+
+Decide whether to ask about Polls and ratings based on what you already know from prior steps:
+
+- If the topic/intent is clearly open-ended exploration (storytelling, lived experience, sensitive narratives, 1-on-1 coaching) — skip this question and default to off. Widgets are about narrowing, not opening.
+- If the session involves prioritisation, scoring, choosing between known options, or rating something specific (retrospective ratings, feature prioritisation, agreement scales, vote-narrowing) — suggest enabling.
+- Otherwise — use `AskUserQuestion`:
+
+  - **Question:** "Enable Polls and ratings? The AI facilitator can offer participants poll, rating, and ranking inputs when narrowing down or prioritising — instead of a plain text question."
+  - **Header:** "Polls/ratings"
+  - **Options:**
+    - Label: "Enable (Recommended)" or "Enable", Description: "Useful when participants need to rank, rate, or pick between options the conversation surfaces" *(use "Recommended" for prioritisation / scoring sessions)*
+    - Label: "Disable", Description: "Pure text conversation — better for open-ended narrative, sensitive topics, or exploration"
+
+Store the answer as `widgets_enabled: true/false` for inclusion in the confirm summary and `create_session` call.
+
+Wait for the user's response.
+
+**Step 9 — Telegram Distribution:**
 
 Check if the user has Telegram groups registered by calling `list_telegram_groups`. If the tool is not available or returns no groups, skip this step silently and proceed to Step 9.
 
@@ -181,7 +199,7 @@ If the user selects a group, store `distribution: [{ channel: "telegram", group_
 
 Wait for the user's response.
 
-**Step 9 — Pre-Session Questions:**
+**Step 10 — Pre-Session Questions:**
 
 Pre-session questions are shown to participants before the conversation starts (e.g. name, role, team). Propose sensible defaults based on the session context:
 
@@ -201,7 +219,7 @@ If the user wants to customize, adjust the list accordingly. If they say "none" 
 
 Store the final questions list for inclusion in the `create_session` call.
 
-**Step 10 — Confirm:**
+**Step 11 — Confirm:**
 
 Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
@@ -213,6 +231,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 >     Context:            {context or "None"}
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
+>     Polls and ratings:  {Yes/No}
 >     Telegram:           {group_name or "None"}
 >     Questions:          {comma-separated list or "None"}
 
@@ -237,12 +256,13 @@ If the user picks "Edit something", ask which field to change and go back to tha
 >     Context:            {context or "None"}
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
+>     Polls and ratings:  {Yes/No}
 >     Telegram:           {group_name or "None"}
 >     Questions:          {comma-separated list or "None"}
 
 Only show diff formatting for the field(s) that actually changed. Unchanged fields display normally.
 
-**Step 11 — Generate Facilitation Prompt:**
+**Step 12 — Generate Facilitation Prompt:**
 
 Before creating the session, generate a tailored facilitation prompt so the AI facilitator understands the specific session context. Without this, the facilitator only gets a generic "skilled facilitator" system prompt that knows nothing about the topic.
 
@@ -294,18 +314,21 @@ If distribution is set to a Telegram group, add this guideline to the generated 
 - This session is distributed via Telegram. Some participants may join from mobile devices — keep messages concise and mobile-friendly.
 ```
 
-**Step 12 — Create:**
+**Step 13 — Create:**
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
 - `goal` (required)
-- `prompt` (the facilitation prompt generated in Step 11)
+- `prompt` (the facilitation prompt generated in Step 12)
 - `template_id` (if a template was chosen — use the exact ID from the Template Matching table)
 - `context` (if provided)
 - `critical` (if provided)
 - `cross_pollination` (true/false)
+- `widgets_enabled` (true/false from Step 8)
 - `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
-- `questions` (the list from Step 9 — array of `{ "text": "..." }` objects, or omit if the host chose no questions)
+- `questions` (the list from Step 10 — array of `{ "text": "..." }` objects, or omit if the host chose no questions)
+
+Requires `harmonica-mcp` ≥ 0.5.0 for `widgets_enabled` to be forwarded. If the MCP rejects the field, fall back to omitting it and inform the user that their MCP server is out of date.
 
 If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
@@ -352,11 +375,13 @@ Wait for the user's response. Apply goal quality nudges.
 
 **Step 3 — Remaining Questions:**
 
-Ask about context, critical question, cross-pollination, and Telegram distribution only if relevant. If the topic and goal give enough signal, you can propose sensible defaults and ask for confirmation rather than asking each one individually. For example:
+Ask about context, critical question, cross-pollination, Polls and ratings, and Telegram distribution only if relevant. If the topic and goal give enough signal, you can propose sensible defaults and ask for confirmation rather than asking each one individually. For example:
 
-> I'll skip the context since the topic is self-explanatory, and enable cross-pollination since this is a brainstorming session with likely multiple participants. Sound good?
+> I'll skip the context since the topic is self-explanatory, enable cross-pollination since this is a brainstorming session with likely multiple participants, and leave Polls and ratings off because the session is open-ended exploration. Sound good?
 
-**Telegram distribution:** Call `list_telegram_groups`. If groups exist, ALWAYS present ALL groups via `AskUserQuestion` (same pattern as Mode 1 Step 8) — never filter or skip based on group name relevance. If no groups or tool unavailable, skip silently.
+Apply the same defaults as Mode 1 Step 8 for Polls and ratings: enable for prioritisation / scoring / ranking sessions, disable for open-ended exploration.
+
+**Telegram distribution:** Call `list_telegram_groups`. If groups exist, ALWAYS present ALL groups via `AskUserQuestion` (same pattern as Mode 1 Step 9) — never filter or skip based on group name relevance. If no groups or tool unavailable, skip silently.
 
 **Step 4 — Confirm & Create:**
 
@@ -370,6 +395,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 >     Context:            {context or "None"}
 >     Critical question:  {critical or "None"}
 >     Cross-pollination:  {Yes/No}
+>     Polls and ratings:  {Yes/No}
 >     Telegram:           {group_name or "None"}
 
 - **Question:** "Ready to create this session?"
@@ -379,9 +405,9 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
   - Label: "Edit something", Description: "Go back and change a specific field"
   - Label: "Cancel", Description: "Discard and start over"
 
-If the user picks "Edit something", ask which field to change and go back to that step. When returning to confirm after an edit, use diff formatting to highlight what changed (same approach as Mode 1 Step 9).
+If the user picks "Edit something", ask which field to change and go back to that step. When returning to confirm after an edit, use diff formatting to highlight what changed (same approach as Mode 1 Step 11).
 
-**Generate the facilitation prompt** using the same approach as Mode 1 Step 11 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
+**Generate the facilitation prompt** using the same approach as Mode 1 Step 12 (Generate Facilitation Prompt). Adapt the steps and questions to the session's topic, goal, and context.
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
@@ -391,8 +417,9 @@ Call the `create_session` MCP tool with the gathered fields:
 - `context` (if provided)
 - `critical` (if provided)
 - `cross_pollination` (true/false)
+- `widgets_enabled` (true/false)
 - `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
-- `questions` (same defaults as Mode 1 Step 9: just `Name` for Telegram sessions, `Name` + `Email` for web-only. Ask the host if they want to adjust.)
+- `questions` (same defaults as Mode 1 Step 10: just `Name` for Telegram sessions, `Name` + `Email` for web-only. Ask the host if they want to adjust.)
 
 If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
