@@ -8,7 +8,7 @@ Unlike a simple session creator, harmonica-chat is a guided session designer. It
 
 ## Prerequisites
 
-harmonica-chat requires the [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) server to be installed. If it's not set up, the command will guide you through installation automatically.
+harmonica-chat requires the [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) server to be installed. If it's not set up, the skill will guide you through installation automatically.
 
 To install manually:
 
@@ -36,13 +36,19 @@ irm https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install
 
 ### Manual Installation
 
-Copy `harmonica-chat.md` to `~/.claude/commands/harmonica-chat.md`
+Copy `SKILL.md` to `~/.claude/skills/harmonica-chat/SKILL.md` and each file from `reference/` to `~/.claude/skills/harmonica-chat/reference/`.
 
-### Updating
+### Updating from v2.x
 
-The command checks for updates automatically on each run and will suggest updating if a newer version is available. You can also update manually with the same install command.
+v3.0.0 changes the install format from a single slash-command file at `~/.claude/commands/harmonica-chat.md` to a multi-file skill at `~/.claude/skills/harmonica-chat/`. The install script handles the migration: it installs the new skill files and removes the legacy command file. Re-run the quick-install command above.
+
+### Updating (v3.0.0+)
+
+The skill checks for updates automatically on each run and will suggest updating if a newer version is available. You can also update manually with the same install command.
 
 ## Usage
+
+Invoke as `/harmonica-chat` (the skill is exposed as a slash command). The entry router parses your input and loads the matching subcommand reference on demand.
 
 ### Guided session design
 
@@ -50,7 +56,7 @@ The command checks for updates automatically on each run and will suggest updati
 /harmonica-chat
 ```
 
-Walks you through the full design flow: intent, template matching, topic, goal, context, critical question, and cross-pollination. Each question is asked one at a time.
+Walks you through the full design flow: intent, template matching, topic, goal, context, critical question, cross-pollination, results visibility, and confirmation. Each question asked one at a time.
 
 ### Accelerated creation
 
@@ -58,7 +64,7 @@ Walks you through the full design flow: intent, template matching, topic, goal, 
 /harmonica-chat "Q1 retrospective"
 ```
 
-Provide a topic upfront to skip the intent and topic questions. The command suggests a template based on your topic and moves through the remaining steps faster.
+Topic upfront skips the intent / topic questions. Template suggestion + faster confirm flow.
 
 ### Project-aware creation
 
@@ -74,18 +80,44 @@ Reads the project's CLAUDE.md and recent git history to auto-generate session co
 /harmonica-chat status                    # List your recent sessions
 /harmonica-chat check "Q1 retro"          # Check participant progress and themes
 /harmonica-chat summary "Q1 retro"        # Get the AI-generated synthesis
+/harmonica-chat edit "Q1 retro"           # Update topic / goal / context / prompt
+/harmonica-chat review "Q1 retro"         # Analyze transcripts + propose prompt fixes
 /harmonica-chat follow-up "Q1 retro"      # Design a follow-up session
 ```
+
+## Architecture
+
+v3.0.0 splits the skill into a thin entry router (`SKILL.md`, ~120 lines) plus 11 subcommand reference files in `reference/` that load on demand. The router parses your input, decides which reference to load, and follows that reference's instructions.
+
+```
+harmonica-chat/
+├── SKILL.md                  Entry router: prerequisites, design laws, routing, commands menu
+└── reference/
+    ├── design.md             Guided session design (14 steps)
+    ├── accelerated.md        Topic-upfront flow + project-aware creation
+    ├── status.md             List recent sessions
+    ├── check.md              Thematic preview of responses
+    ├── summary.md            AI-generated synthesis
+    ├── edit.md               Update session metadata
+    ├── review.md             Facilitation quality analysis + prompt fixes
+    ├── follow-up.md          Design a next-step session
+    ├── invitation.md         Post-creation invitation flow
+    ├── templates.md          Template matching reference
+    └── expertise.md          Soft-nudge session design heuristics
+```
+
+This keeps context lean — the router loads when you invoke the skill, references load only when you use the matching subcommand. Inspired by [pbakaus/impeccable](https://github.com/pbakaus/impeccable)'s architecture.
 
 ## Features
 
 - **Guided session design** with template matching across 9 templates (Retrospective, Brainstorming, SWOT, Theory of Change, OKRs, Action Planning, Community Policy, Weekly Check-ins, Risk Assessment)
-- **Session design expertise** — goal quality nudges, context calibration, cross-pollination recommendations
+- **Session design expertise** — goal quality nudges, context calibration, cross-pollination recommendations, constraint discovery
 - **Project-aware context** — reads CLAUDE.md and git history to auto-fill session context
-- **Full session lifecycle** — status, check, summary, and follow-up commands
-- **Telegram distribution** — sessions can be announced to Telegram groups via the Harmonica bot (v2.5.0)
-- **Pre-session questions** — configure what participants answer before the conversation (e.g. Name, Role); defaults are smart: Name only for Telegram, Name + Email for web (v2.8.0)
-- **Invitation drafting** with tone adapted to session type, plus integration with communication tools (Zapier, Slack) when available
+- **Full session lifecycle** — status, check, summary, edit, review, follow-up
+- **Facilitation quality review** — analyzes transcripts across 5 dimensions, proposes specific prompt fixes with literal-quote citations (v2.11.0+)
+- **Telegram distribution** — sessions can be announced to Telegram groups via the Harmonica bot
+- **Pre-session questions** — configure what participants answer before the conversation; defaults are smart per distribution channel
+- **Invitation drafting** with tone adapted to template type, plus integration with communication tools (Zapier, Slack) when available
 - **Community participation feed** integration for publishing sessions to community dashboards
 
 ## See Also
