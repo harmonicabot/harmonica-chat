@@ -1,4 +1,4 @@
-<!-- harmonica-chat v2.10.0 -->
+<!-- harmonica-chat v2.10.1 -->
 # Harmonica — Session Companion
 
 Design, create, and manage Harmonica deliberation sessions through conversation.
@@ -17,9 +17,9 @@ Fetch the latest version from GitHub to check if this command is up to date:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md | head -1
 ```
 
-Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.10.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the first line of the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v2.10.1` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.10.0`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v2.10.1`). Run this to update:
 > ```
 > curl -sL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/harmonica-chat.md -o ~/.claude/commands/harmonica-chat.md
 > ```
@@ -594,7 +594,7 @@ Analyze participant transcripts to identify what worked, what didn't, and sugges
    - "Apply these prompt changes?" → use `update_session`
    - "Create Linear issues for systemic problems?" → create issues with proper project
 
-**Note:** For a more detailed analysis, the `/review-session` skill provides the full framework. This command is a lighter version integrated into the harmonica-chat flow.
+**Note:** For a more detailed analysis, the `/harmonica-session-review` skill provides the full framework ([github.com/harmonicabot/harmonica-session-review](https://github.com/harmonicabot/harmonica-session-review)). This command is a lighter version integrated into the harmonica-chat flow.
 
 #### `follow-up <session reference>` — Design a Follow-Up Session
 
