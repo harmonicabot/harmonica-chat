@@ -1,6 +1,6 @@
 # Lifecycle: `follow-up <session reference>` — Design a Follow-Up Session
 
-1. Resolve the session using `search_sessions`
+1. Resolve the session — same logic as [reference/check.md](check.md) step 1 (UUID-shaped → `get_session` directly; otherwise `search_sessions` + disambiguation).
 2. Call `get_summary` with the session ID to get the original session's findings
 3. If no summary exists, call `get_responses` and synthesize the key findings yourself
 4. Propose a follow-up session that builds on the findings:

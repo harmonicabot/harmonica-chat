@@ -1,7 +1,7 @@
 # Lifecycle: `edit <session reference>` — Edit Session Metadata
 
-1. Resolve the session using `search_sessions` (same matching and disambiguation logic as [reference/check.md](check.md))
-2. Call `get_session` with the matched session ID to show current metadata
+1. Resolve the session — same logic as [reference/check.md](check.md) step 1 (UUID-shaped → `get_session` directly; otherwise `search_sessions` + disambiguation).
+2. (If you took the search path) Call `get_session` with the matched session ID to show current metadata.
 3. Present the current session fields:
 
 > **"{Topic}"** — current settings:
