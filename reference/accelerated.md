@@ -4,14 +4,14 @@ The user provided a topic in `$ARGUMENTS`. Skip the intent and topic questions a
 
 **Step 1 — Template Match:**
 
-Using the topic text and [reference/templates.md](templates.md), identify the best-matching template. If no template matches well, proceed freeform without asking.
+Call the `list_templates` MCP tool to fetch the live platform template library. Match the topic text against returned titles + descriptions to identify the best fit. If no template matches well, proceed freeform without asking.
 
 If a template matches, use `AskUserQuestion`:
 
 - **Question:** "Which session format works best for '{topic}'?"
 - **Header:** "Template"
 - **Options:**
-  - Label: "{template name} (Recommended)", Description: "{1-2 sentence explanation}"
+  - Label: "{template title} (Recommended)", Description: "{template description, one sentence}"
   - Label: "Freeform", Description: "No template — I'll design the session structure from your goal"
 
 Wait for the user's response.
@@ -59,13 +59,13 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
 If the user picks "Edit something", ask which field to change and go back to that step. When returning to confirm after an edit, use diff formatting to highlight what changed (same approach as design.md Step 12).
 
-**Generate the facilitation prompt** using the same approach as [reference/design.md](design.md) Step 13. Adapt the steps and questions to the session's topic, goal, and context.
+**Facilitation prompt:** same conditional rule as [reference/design.md](design.md) Step 13 — generate a freeform prompt ONLY when no template was chosen; when `template_id` is set, omit `prompt` and let the platform use the template's stored `facilitation_prompt`.
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
 - `goal` (required)
-- `prompt` (the generated facilitation prompt)
-- `template_id` (if a template was chosen — use the exact ID from [reference/templates.md](templates.md))
+- `template_id` (if a template was chosen — use the exact ID returned by `list_templates`)
+- `prompt` — **freeform sessions only**. Omit entirely when `template_id` is set.
 - `context` (if provided)
 - `critical` (if provided)
 - `cross_pollination` (true/false)

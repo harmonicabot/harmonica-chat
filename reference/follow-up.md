@@ -3,8 +3,8 @@
 1. Resolve the session — same logic as [reference/check.md](check.md) step 1 (UUID-shaped → `get_session` directly; otherwise `search_sessions` + disambiguation).
 2. Call `get_summary` with the session ID to get the original session's findings
 3. If no summary exists, call `get_responses` and synthesize the key findings yourself
-4. Propose a follow-up session that builds on the findings:
-   - Suggest a natural next-step template (e.g., Retrospective findings lead to Action Planning, Brainstorming leads to SWOT or Action Planning, Risk Assessment leads to Action Planning)
+4. Call `list_templates` to fetch the current platform template library. Propose a follow-up session that builds on the findings:
+   - Suggest a natural next-step template from the live list. Common chains: retrospective findings → action planning; brainstorming → SWOT or action planning; risk assessment → action planning. If no template fits, propose freeform.
    - Auto-fill `context` with a summary of the previous session's key findings
    - Propose a topic: e.g., "Action items from: {original topic}"
    - Propose a goal based on the summary themes
@@ -21,4 +21,4 @@ Present the proposal:
 >
 > Want to create this, or adjust anything?
 
-If confirmed, **generate a facilitation prompt** using the same approach as [reference/design.md](design.md) Step 13, incorporating the previous session's findings into the context. Then call `create_session` with the proposed fields plus the generated `prompt` and `distribution` (if a Telegram group was selected), display the result, and load [reference/invitation.md](invitation.md) for the invitation flow.
+If confirmed, **handle the facilitation prompt per [reference/design.md](design.md) Step 13** — only generate a freeform prompt when no template was chosen; when `template_id` is set, omit `prompt` from `create_session` and let the platform use the template's stored facilitation_prompt. For freeform follow-ups, incorporate the previous session's findings into the prompt's Background. Call `create_session` with the proposed fields, `distribution` (if a Telegram group was selected), display the result, and load [reference/invitation.md](invitation.md) for the invitation flow.

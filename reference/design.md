@@ -20,12 +20,16 @@ Wait for the user's response.
 
 **Step 2 — Template Match:**
 
-Using the user's intent and the [reference/templates.md](templates.md) table, identify the best-matching template. Use `AskUserQuestion` to present the choice:
+Call the `list_templates` MCP tool to fetch the live platform template library. Templates are managed by Harmonica admins — what `list_templates` returns IS the source of truth. Do not rely on a hardcoded list.
+
+Match the user's intent (from Step 1) against the returned templates by title and description. Pick the strongest match plus optionally a plausible second.
+
+Use `AskUserQuestion` to present the choice:
 
 - **Question:** "Which session format works best?"
 - **Header:** "Template"
 - **Options:**
-  - Label: "{template name} (Recommended)", Description: "{1-2 sentence explanation of what this template does}"
+  - Label: "{template title} (Recommended)", Description: "{template description, truncated to one sentence}"
   - Label: "Custom design", Description: "Design a freeform session without a template"
   - *(If a second template is a plausible fit, include it as a third option)*
 
@@ -217,11 +221,14 @@ If the user picks "Edit something", ask which field to change and go back to tha
 
 Only show diff formatting for the field(s) that actually changed. Unchanged fields display normally.
 
-**Step 13 — Generate Facilitation Prompt:**
+**Step 13 — Facilitation Prompt:**
 
-Before creating the session, generate a tailored facilitation prompt so the AI facilitator understands the specific session context. Without this, the facilitator only gets a generic "skilled facilitator" system prompt that knows nothing about the topic.
+The facilitation prompt depends on whether a template was chosen in Step 2:
 
-Generate a prompt following this structure:
+- **A template was chosen** (`template_id` is set) — **do NOT generate a prompt yourself**. The platform has each template's `facilitation_prompt` stored in the `templates` table; it will use it automatically when `create_session` is called with `template_id`. Omitting the `prompt` field lets the template do its job. If you generate a prompt anyway, you'll override the curated template prompt with one you invented from outside, which defeats the point of picking the template.
+- **Freeform** (no template, or template fell through) — generate a tailored prompt using the structure below. Without it, the facilitator falls back to a generic "skilled facilitator" system prompt that knows nothing about your topic.
+
+Freeform prompt structure:
 
 ```
 You are a facilitator running a short, focused async session. Keep every message SHORT — 2-3 sentences max. Never ask more than ONE question at a time. Wait for the answer before moving on.
@@ -247,13 +254,7 @@ Objective: {goal}
 - Don't explain the format or number of steps upfront — just start the conversation naturally.
 ```
 
-Design the flow questions to match the session's purpose:
-- **Retrospective**: What went well → what didn't → what to change → who owns what. Reflective tone.
-- **Brainstorming**: Open idea prompt → build on it → any more? → which is your favorite. Energetic tone.
-- **SWOT**: Biggest strength → biggest weakness → opportunity → threat. Analytical tone.
-- **Action Planning**: What's the problem → what's one fix → impact/effort → who owns it. Practical tone.
-- **Risk Assessment**: What could go wrong → how likely → how to mitigate. Serious tone.
-- **Freeform**: Derive 4-6 natural conversational questions from the goal. Neutral professional tone.
+Derive 4-6 natural conversational questions from the goal. Neutral professional tone unless the topic suggests otherwise.
 
 **Important**: The prompt should be specific to THIS session — weave in the actual topic, goal, and context into the questions themselves. A prompt about "NSRT community meetup planning" should ask about neighborhood needs, not generic facilitation questions. This is the key difference from the generic fallback.
 
@@ -261,21 +262,23 @@ Design the flow questions to match the session's purpose:
 
 Do NOT show the generated prompt to the user unless they ask. Just generate it internally for the `create_session` call.
 
-**Step 13b — Facilitation Prompt for Telegram Distribution:**
+**Step 13b — Facilitation Prompt for Telegram Distribution (freeform only):**
 
-If distribution is set to a Telegram group, add this guideline to the generated facilitation prompt's Rules section:
+If you generated a freeform prompt AND distribution is set to a Telegram group, add this guideline to the prompt's Rules section:
 
 ```
 - This session is distributed via Telegram. Some participants may join from mobile devices — keep messages concise and mobile-friendly.
 ```
+
+(For template-backed sessions, mobile-friendliness is the template author's call — don't second-guess it.)
 
 **Step 14 — Create:**
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
 - `goal` (required)
-- `prompt` (the facilitation prompt generated in Step 13)
-- `template_id` (if a template was chosen — use the exact ID from [reference/templates.md](templates.md))
+- `template_id` (if a template was chosen — use the exact ID returned by `list_templates` in Step 2)
+- `prompt` — **freeform sessions only**. Pass the prompt generated in Step 13. **Omit entirely when `template_id` is set** so the platform uses the template's stored `facilitation_prompt`.
 - `context` (if provided)
 - `critical` (if provided)
 - `cross_pollination` (true/false)
@@ -284,9 +287,9 @@ Call the `create_session` MCP tool with the gathered fields:
 - `distribution` (if a Telegram group was selected — array: `[{ "channel": "telegram", "group_id": "{id}" }]`)
 - `questions` (the list from Step 11 — array of `{ "text": "..." }` objects, or omit if the host chose no questions)
 
-Requires `harmonica-mcp` ≥ 0.6.0 for `widgets_enabled` and `results_visibility` to be forwarded. If the MCP rejects either field, fall back to omitting it and inform the user that their MCP server is out of date.
+Requires `harmonica-mcp` ≥ 0.11.0 for `list_templates` (Step 2). For `widgets_enabled` / `results_visibility` (≥ 0.6.0): if the MCP rejects either field, fall back to omitting it and inform the user that their MCP server is out of date.
 
-If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
+If the `create_session` call fails with a template validation error, retry without `template_id` (fall back to freeform — generate a prompt per Step 13 and pass it). Inform the user: "That template isn't available on your Harmonica instance. I've created a freeform session instead."
 
 On success, display:
 

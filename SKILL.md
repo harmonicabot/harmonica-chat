@@ -4,7 +4,7 @@ description: Design, create, and manage Harmonica deliberation sessions. Use whe
 allowed-tools: mcp__harmonica__*, AskUserQuestion, Read, Bash(git:*), Bash(echo:*), Bash(curl:*)
 ---
 
-<!-- harmonica-chat v3.2.0 -->
+<!-- harmonica-chat v3.3.0 -->
 
 # Harmonica — Session Companion
 
@@ -16,7 +16,7 @@ Shared rules every subcommand inherits. Don't violate them per local convenience
 
 - **English-only metadata.** Topic, goal, context, critical question, and the generated facilitation prompt MUST be in English, even if the conversation with the user is in another language. Harmonica's facilitation layer is English-only; non-Latin characters (Cyrillic, CJK, etc.) get corrupted into `???` in titles, descriptions, and prompts. Only the actual participant chat during the session supports other languages.
 - **ONE question per message** in any flow that asks the user (design, accelerated) AND in any facilitation prompt you generate. Never bundle questions. Wait for the answer before moving on.
-- **Always generate a tailored facilitation prompt** before `create_session`. The Harmonica API does NOT generate prompts itself — it falls back to a generic "skilled facilitator" template that knows nothing about your topic. Skipping prompt generation produces generic, low-engagement sessions.
+- **Facilitation prompt comes from the right place.** If a template was chosen, **omit the `prompt` field in `create_session`** so the platform uses the template's stored `facilitation_prompt`. Generating your own prompt overrides curated template prompts and defeats the point of picking a template. Only generate a freeform prompt when NO template applies — without one, the platform falls back to a generic "skilled facilitator" template that knows nothing about your topic.
 - **Don't generate verbose prompts.** No sub-questions, no multi-part questions, no "Step X of Y" structures inside the prompt. Messages are 2-3 sentences max. Participants are on mobile and won't write essays. Think chat, not survey.
 - **Don't show the generated prompt by default.** Generate it internally for the `create_session` call. Only show it if the user explicitly asks to see or edit it.
 - **Don't override template structure unilaterally.** If a template is selected, use it as a guide for the generated prompt's step themes — but still generate a session-specific prompt. Templates provide defaults for goal/context, not facilitation instructions.
@@ -62,9 +62,9 @@ Only on the no-args guided path (path 1). Fetch the latest version from GitHub:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/SKILL.md | grep -m1 '<!-- harmonica-chat v'
 ```
 
-Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v3.2.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v3.3.0` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v3.2.0`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v3.3.0`). Run this to update:
 > ```
 > curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh | bash
 > ```
@@ -115,6 +115,7 @@ For lifecycle commands, `<ref>` can be a Harmonica session URL, a bare UUID, or 
 
 Supporting references (load when needed):
 
-- [reference/templates.md](reference/templates.md) — Template matching table (9 templates: Retrospective, Brainstorming, SWOT, Theory of Change, OKRs, Action Planning, Community Policy, Weekly Check-ins, Risk Assessment)
 - [reference/expertise.md](reference/expertise.md) — Session design expertise (goal quality nudges, context calibration, cross-pollination recommendation, critical-question constraint discovery)
 - [reference/invitation.md](reference/invitation.md) — Post-creation invitation flow (join URL, draft message, community feed, follow-up prompt)
+
+Note on templates: the template list is fetched at runtime via `mcp__harmonica__list_templates` (harmonica-mcp ≥ 0.11.0). The platform admin panel is the source of truth; this skill never hardcodes a template list.

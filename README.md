@@ -124,15 +124,16 @@ harmonica-chat/
     ├── review.md             Facilitation quality analysis + prompt fixes
     ├── follow-up.md          Design a next-step session
     ├── invitation.md         Post-creation invitation flow
-    ├── templates.md          Template matching reference
     └── expertise.md          Soft-nudge session design heuristics
 ```
+
+Templates are NOT hardcoded — fetched at runtime via `mcp__harmonica__list_templates` (harmonica-mcp ≥ 0.11.0). The Harmonica admin panel is the single source of truth.
 
 This keeps context lean — the router loads when you invoke the skill, references load only when you use the matching subcommand. Inspired by [pbakaus/impeccable](https://github.com/pbakaus/impeccable)'s architecture.
 
 ## Features
 
-- **Guided session design** with template matching across 9 templates (Retrospective, Brainstorming, SWOT, Theory of Change, OKRs, Action Planning, Community Policy, Weekly Check-ins, Risk Assessment)
+- **Guided session design** with template matching against the live Harmonica template library (fetched at runtime via `list_templates`; whatever the platform admin panel publishes is what you'll see)
 - **Session design expertise** — goal quality nudges, context calibration, cross-pollination recommendations, constraint discovery
 - **Project-aware context** — reads CLAUDE.md and git history to auto-fill session context
 - **Full session lifecycle** — status, check, summary, edit, review, follow-up
