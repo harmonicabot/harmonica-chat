@@ -1,50 +1,72 @@
 # harmonica-chat
 
-A conversational companion for [Claude Code](https://claude.ai/code) that helps you design, create, and manage Harmonica sessions.
+Design and manage [Harmonica](https://harmonica.chat) deliberation sessions from your coding agent. Guided session design, template matching across the live platform library, full lifecycle commands (check, summary, edit, review, follow-up), and post-session facilitation-quality analysis.
 
-[Harmonica](https://app.harmonica.chat) is a structured conversations platform where groups align via AI-facilitated async conversations. You create a session with a topic and goal, share a link with participants, and each person has a private 1:1 conversation with an AI facilitator. Responses are then synthesized into actionable insights. [Learn more](https://help.harmonica.chat).
+[Harmonica](https://app.harmonica.chat) is a structured-conversations platform where groups align via AI-facilitated async conversations. You create a session with a topic and goal, share a link with participants, and each person has a private 1:1 chat with an AI facilitator. Responses are then synthesized into actionable insights. [Learn more](https://help.harmonica.chat).
 
-Unlike a simple session creator, harmonica-chat is a guided session designer. It walks you through template selection, goal refinement, and context calibration — then handles the full session lifecycle from creation through follow-up.
+Unlike a one-shot session creator, harmonica-chat is a guided designer — it walks you through template selection, goal refinement, and context calibration, then handles the full lifecycle from creation through follow-up.
+
+## Works with
+
+- **[Claude Code](https://claude.ai/code)** — fully supported today, via `~/.claude/skills/harmonica-chat/`. Quick install below.
+- Cursor, Codex, Grok Build, OpenCode, … — the skill is plain Markdown using the [Agent Skills](https://agentskills.io) format. Manual install (copy `SKILL.md` + `reference/` to the agent's skills directory) should work; first-class installers for these are tracked in [HAR-731](https://linear.app/harmonica-pro/issue/HAR-731) / [HAR-1225 → multi-harness packaging](https://linear.app/harmonica-pro/issue/HAR-1225).
 
 ## Prerequisites
 
-harmonica-chat requires the [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) server to be installed. If it's not set up, the skill will guide you through installation automatically.
-
-To install manually:
-
-1. **Get a Harmonica account** — [Sign up free](https://app.harmonica.chat) if you don't have one.
-2. **Generate an API key** — Go to [Profile](https://app.harmonica.chat/profile) > API Keys > Generate API Key. Copy the `hm_live_...` key.
-3. **Install the MCP server** (replace with your actual key):
-   ```
-   claude mcp add-json harmonica '{"command":"npx","args":["-y","harmonica-mcp"],"env":{"HARMONICA_API_KEY":"hm_live_..."}}' -s user
-   ```
-4. Restart Claude Code to load the new MCP server.
+- A Harmonica account — [sign up free](https://app.harmonica.chat) if you don't have one.
+- An API key — generate at [Profile > API Keys](https://app.harmonica.chat/profile). You'll get a `hm_live_...` value.
+- [Node.js](https://nodejs.org) ≥18 on PATH (needed to run [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) via npx).
+- [Claude Code](https://claude.ai/code) on PATH (for the v3.1 installer; manual install works without it).
 
 ## Installation
 
-### Quick Install (bash)
+### Quick install — bash (macOS / Linux / Git Bash on Windows)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh | bash
+HARMONICA_API_KEY=hm_live_... bash <(curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh)
 ```
 
-### Quick Install (PowerShell)
+### Quick install — PowerShell (Windows)
 
 ```powershell
+$env:HARMONICA_API_KEY = 'hm_live_...'
 irm https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.ps1 | iex
 ```
 
-### Manual Installation
+### What the installer does
 
-Copy `SKILL.md` to `~/.claude/skills/harmonica-chat/SKILL.md` and each file from `reference/` to `~/.claude/skills/harmonica-chat/reference/`.
+1. Verifies `HARMONICA_API_KEY` is set, `claude` CLI is on PATH, `node` is available.
+2. Configures the `harmonica` MCP server in Claude Code (`claude mcp add-json harmonica … -s user`) with your key — idempotent; skips if already configured.
+3. Installs `SKILL.md` + 11 `reference/*.md` files to `~/.claude/skills/harmonica-chat/`.
+4. Pre-approves the 6 read-only `mcp__harmonica__*` tools (`list_sessions`, `search_sessions`, `get_session`, `get_responses`, `get_summary`, `list_telegram_groups`) by adding them to `~/.claude/settings.json` `permissions.allow` — fewer prompts during use; mutations (`create_session`, `update_session`) still require confirmation.
+5. Removes the legacy v2.x slash-command install at `~/.claude/commands/harmonica-chat.md` if present.
+6. Verifies the MCP is registered.
+
+Then restart Claude Code and you're done — invoke `/harmonica-chat`, or just describe what you want to facilitate.
+
+### Manual installation
+
+If you can't run the script or are installing for a non-Claude-Code agent:
+
+1. Configure the MCP server:
+   ```bash
+   claude mcp add-json harmonica '{"command":"npx","args":["-y","harmonica-mcp"],"env":{"HARMONICA_API_KEY":"hm_live_..."}}' -s user
+   ```
+   (or the equivalent for your agent — see its docs for MCP configuration.)
+2. Copy `SKILL.md` and the `reference/` directory to your agent's skills location (Claude Code: `~/.claude/skills/harmonica-chat/`).
+3. Restart your agent.
 
 ### Updating from v2.x
 
-v3.0.0 changes the install format from a single slash-command file at `~/.claude/commands/harmonica-chat.md` to a multi-file skill at `~/.claude/skills/harmonica-chat/`. The install script handles the migration: it installs the new skill files and removes the legacy command file. Re-run the quick-install command above.
+v3.0.0 moved the install path from `~/.claude/commands/harmonica-chat.md` to `~/.claude/skills/harmonica-chat/SKILL.md + reference/`. The v3.1+ installer removes the legacy file automatically. Re-run the quick-install command.
 
 ### Updating (v3.0.0+)
 
-The skill checks for updates automatically on each run and will suggest updating if a newer version is available. You can also update manually with the same install command.
+The skill checks for updates on each run and suggests updating if a newer version is available. You can also update manually with the same quick-install command.
+
+### Why pre-approve read-only MCP tools?
+
+By default Claude Code prompts before running any MCP tool. For harmonica-chat that means a prompt every time it lists or fetches a session — fast to dismiss but death by paper cuts during a `check` / `summary` / `review` flow. The installer pre-approves the 6 read-only tools so you only get prompted for mutations (creating, updating, sending chat messages). To opt out: remove the entries from `~/.claude/settings.json` `permissions.allow` after install.
 
 ## Usage
 

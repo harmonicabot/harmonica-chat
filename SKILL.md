@@ -3,7 +3,7 @@ name: harmonica-chat
 description: Design, create, and manage Harmonica deliberation sessions. Use when the user wants to set up a structured async conversation, run a retrospective / brainstorming / SWOT / risk-assessment session, check or review an existing session's responses, get its summary, edit its metadata, or design a follow-up. Subcommands are loaded on demand from reference/.
 ---
 
-<!-- harmonica-chat v3.0.0 -->
+<!-- harmonica-chat v3.1.0 -->
 
 # Harmonica — Session Companion
 
@@ -19,9 +19,9 @@ Fetch the latest version from GitHub to check if this skill is up to date:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/SKILL.md | grep -m1 '<!-- harmonica-chat v'
 ```
 
-Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v3.0.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v3.1.0` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v3.0.0`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v3.1.0`). Run this to update:
 > ```
 > curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh | bash
 > ```
