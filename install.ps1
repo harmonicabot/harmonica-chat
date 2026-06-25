@@ -9,8 +9,7 @@ $SkillDir = "$ClaudeDir\skills\harmonica-chat"
 $SettingsFile = "$ClaudeDir\settings.json"
 $ReferenceFiles = @(
   "design.md", "accelerated.md", "status.md", "check.md", "summary.md",
-  "edit.md", "review.md", "follow-up.md", "invitation.md", "templates.md",
-  "expertise.md"
+  "edit.md", "review.md", "follow-up.md", "invitation.md", "expertise.md"
 )
 $AutoApproveTools = @(
   "mcp__harmonica__list_sessions",
@@ -84,6 +83,9 @@ if ($McpList -match "^harmonica") {
 # --- 5. Install SKILL.md + reference/ ---
 New-Item -ItemType Directory -Force -Path "$SkillDir\reference" | Out-Null
 Invoke-WebRequest -Uri "$RepoUrl/SKILL.md" -OutFile "$SkillDir\SKILL.md"
+# Clean stale reference files first so removed-upstream files (like templates.md
+# in v3.3.0) don't linger on update.
+Get-ChildItem -Path "$SkillDir\reference" -Filter "*.md" -ErrorAction SilentlyContinue | Remove-Item -Force
 foreach ($file in $ReferenceFiles) {
   Invoke-WebRequest -Uri "$RepoUrl/reference/$file" -OutFile "$SkillDir\reference\$file"
 }

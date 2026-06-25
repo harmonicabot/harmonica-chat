@@ -18,7 +18,6 @@ REFERENCE_FILES=(
   "review.md"
   "follow-up.md"
   "invitation.md"
-  "templates.md"
   "expertise.md"
 )
 AUTO_APPROVE_TOOLS=(
@@ -88,6 +87,9 @@ fi
 # --- 5. Install SKILL.md + reference/ ---
 mkdir -p "$SKILL_DIR/reference"
 curl -fsSL "$REPO_URL/SKILL.md" -o "$SKILL_DIR/SKILL.md"
+# Clean stale reference files first so removed-upstream files (like templates.md
+# in v3.3.0) don't linger on update.
+rm -f "$SKILL_DIR/reference/"*.md
 for file in "${REFERENCE_FILES[@]}"; do
   curl -fsSL "$REPO_URL/reference/$file" -o "$SKILL_DIR/reference/$file"
 done
