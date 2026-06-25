@@ -94,12 +94,18 @@ done
 echo "✓ Installed SKILL.md + ${#REFERENCE_FILES[@]} reference files to $SKILL_DIR"
 
 # --- 6. Pre-approve read-only harmonica MCP tools ---
-mkdir -p "$CLAUDE_DIR"
+# Use os.homedir() inside the node script — bash $HOME on Git Bash for Windows
+# is POSIX-form (/c/Users/...) which Node misinterprets as a relative path
+# under the drive root, producing C:\c\Users\... and failing to write.
 TOOLS_JSON=$(printf '"%s",' "${AUTO_APPROVE_TOOLS[@]}")
 TOOLS_JSON="[${TOOLS_JSON%,}]"
 node -e "
 const fs = require('fs');
-const p = '$SETTINGS_FILE';
+const os = require('os');
+const path = require('path');
+const claudeDir = path.join(os.homedir(), '.claude');
+const p = path.join(claudeDir, 'settings.json');
+fs.mkdirSync(claudeDir, { recursive: true });
 const tools = $TOOLS_JSON;
 let cfg = {};
 if (fs.existsSync(p)) {

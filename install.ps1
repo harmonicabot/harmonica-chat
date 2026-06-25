@@ -90,11 +90,17 @@ foreach ($file in $ReferenceFiles) {
 Write-Host "OK Installed SKILL.md + $($ReferenceFiles.Count) reference files to $SkillDir"
 
 # --- 6. Pre-approve read-only harmonica MCP tools ---
-New-Item -ItemType Directory -Force -Path $ClaudeDir | Out-Null
+# Use os.homedir() inside the node script for consistency with install.sh (which
+# needs it for Git Bash on Windows path translation). PowerShell wouldn't strictly
+# need this, but the same script keeps both installers in sync.
 $ToolsJson = ($AutoApproveTools | ForEach-Object { "`"$_`"" }) -join ","
 $NodeScript = @"
 const fs = require('fs');
-const p = process.env.HCHAT_SETTINGS_PATH;
+const os = require('os');
+const path = require('path');
+const claudeDir = path.join(os.homedir(), '.claude');
+const p = path.join(claudeDir, 'settings.json');
+fs.mkdirSync(claudeDir, { recursive: true });
 const tools = [$ToolsJson];
 let cfg = {};
 if (fs.existsSync(p)) {
@@ -110,9 +116,7 @@ for (const t of tools) if (!cfg.permissions.allow.includes(t)) { cfg.permissions
 fs.writeFileSync(p, JSON.stringify(cfg, null, 2));
 console.log('OK Pre-approved ' + tools.length + ' read-only MCP tools (' + added + ' newly added)');
 "@
-$env:HCHAT_SETTINGS_PATH = $SettingsFile
 & node -e $NodeScript
-Remove-Item Env:HCHAT_SETTINGS_PATH
 
 # --- 7. Migration: remove the v2.x slash-command install if present ---
 $LegacyCmd = "$ClaudeDir\commands\harmonica-chat.md"
