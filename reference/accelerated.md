@@ -108,11 +108,13 @@ If the resolved directory doesn't exist, tell the user ("I couldn't find a '{dir
 2. Check recent git history by running `git log --oneline --since='2 weeks ago'` in the project directory. If the directory is not a git repo (command fails), skip activity-based suggestions and proceed with whatever context you gathered from step 1.
 3. Summarize the project and recent work in 2-3 sentences
 4. Auto-fill the session's `context` field with this summary (keep it to 3-5 sentences — never dump the full CLAUDE.md or git log). **Expand all abbreviations and jargon**: if the project is "NSRT" explain it as "Novi Sad Relational Tech — community tools for Novi Sad residents"; if it's "OFL" say "Open Facilitation Library". The facilitation prompt will be built from this context, so ambiguous terms like "relational" must be disambiguated explicitly.
-5. Suggest a session type based on recent activity patterns (skip if git history was unavailable):
-   - Many recent commits or a completed milestone — Retrospective
-   - New feature branch or early design work — Brainstorming
-   - Bug fixes or incident responses — Risk Assessment
+5. Suggest a session type based on recent activity patterns (skip if git history was unavailable). Map the activity to a *category*, then pick the best-matching template from the `list_templates` result returned earlier:
+   - Many recent commits or a completed milestone — looking-back / retrospective category
+   - New feature branch or early design work — divergent / generative category (brainstorming-adjacent)
+   - Bug fixes or incident responses — risk / assessment category
    - No recent activity — skip the suggestion, ask normally
+
+   If no template in the live list fits the category cleanly, propose freeform.
 
 Present the auto-generated context and session type suggestion to the user for confirmation before proceeding:
 

@@ -16,8 +16,9 @@ The skill requires the [harmonica-mcp](https://github.com/harmonicabot/harmonica
   - `accelerated.md` — Mode 2: topic-upfront flow + project-aware creation
   - `status.md`, `check.md`, `summary.md`, `edit.md`, `review.md`, `follow-up.md` — lifecycle commands
   - `invitation.md` — post-creation invitation flow (join URL, draft message, community feed)
-  - `templates.md` — template matching reference table (9 templates)
   - `expertise.md` — soft-nudge session design heuristics (goal quality, context calibration, cross-pollination, critical questions)
+
+Templates are NOT in `reference/` — they're fetched at runtime via `mcp__harmonica__list_templates` (harmonica-mcp ≥ 0.11.0). The Harmonica admin panel is the single source of truth; the skill never hardcodes a template list. See [HAR-1227](https://linear.app/harmonica-pro/issue/HAR-1227).
 - `install.sh` / `install.ps1` — One-line installers. Download SKILL.md + all reference files. v3.0.0+ also migrates the legacy v2.x slash-command install (removes `~/.claude/commands/harmonica-chat.md` if present).
 - `docs/plans/` — Design docs for major rewrites (reference only, not part of the product).
 

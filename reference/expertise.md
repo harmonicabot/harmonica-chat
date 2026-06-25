@@ -19,7 +19,7 @@ Apply these as soft nudges during the guided flow. Never force them — if the u
 
 - **Small group implied by topic** (1-on-1, coaching, pair review) — Skip the question, default to off.
 - **Sensitive or anonymous topics** — Suggest off: "For sensitive topics, participants may be more candid without seeing others' responses."
-- **3+ participants + brainstorming** — Strongly recommend: "Seeing others' emerging ideas sparks new ones. I'd recommend enabling cross-pollination."
+- **3+ participants + divergent / generative template** (any template focused on idea generation, not narrowing) — Strongly recommend: "Seeing others' emerging ideas sparks new ones. I'd recommend enabling cross-pollination."
 - **3+ participants + other types** — Suggest as option: "Cross-pollination shares insights between participant threads as people contribute. Want to enable it?"
 - **Fewer than 3 participants** (user confirms) — Default to off. Cross-pollination isn't useful with few threads.
 

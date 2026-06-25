@@ -26,12 +26,14 @@ Ask:
 >
 > Join here: {join_url}
 
-Adapt the tone to the template type:
-- Brainstorming — energetic, encouraging wild ideas
-- Retrospective — reflective, safe space
-- Risk Assessment — serious, thorough
-- Community Policy — inclusive, democratic
-- Other — neutral and professional
+Adapt the tone to the template's category. Common patterns:
+- Divergent / generative (brainstorming-adjacent) — energetic, encouraging wild ideas
+- Looking back / retrospective — reflective, safe space
+- Risk or assessment — serious, thorough
+- Norm-setting / policy / governance — inclusive, democratic
+- Default — neutral and professional
+
+Match against the actual template title + description (from `list_templates` earlier in the flow), not a hardcoded list.
 
 **If communication MCP tools are detected**, offer additional options. Check at runtime which tools are available:
 

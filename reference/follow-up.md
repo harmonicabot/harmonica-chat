@@ -4,7 +4,7 @@
 2. Call `get_summary` with the session ID to get the original session's findings
 3. If no summary exists, call `get_responses` and synthesize the key findings yourself
 4. Call `list_templates` to fetch the current platform template library. Propose a follow-up session that builds on the findings:
-   - Suggest a natural next-step template from the live list. Common chains: retrospective findings → action planning; brainstorming → SWOT or action planning; risk assessment → action planning. If no template fits, propose freeform.
+   - Suggest a natural next-step template from the live `list_templates` result. Look for category-level chains: a looking-back template's findings typically suggest a planning template next; a divergent template suggests a narrowing or planning one; a risk-assessment template suggests a planning/mitigation one. Pick the closest available template, or propose freeform if nothing fits.
    - Auto-fill `context` with a summary of the previous session's key findings
    - Propose a topic: e.g., "Action items from: {original topic}"
    - Propose a goal based on the summary themes
