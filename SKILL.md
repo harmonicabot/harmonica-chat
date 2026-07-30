@@ -4,7 +4,7 @@ description: Design, create, and manage Harmonica deliberation sessions. Use whe
 allowed-tools: mcp__harmonica__*, AskUserQuestion, Read, Bash(git:*), Bash(echo:*), Bash(curl:*)
 ---
 
-<!-- harmonica-chat v3.3.0 -->
+<!-- harmonica-chat v3.3.1 -->
 
 # Harmonica — Session Companion
 
@@ -44,8 +44,24 @@ When a subcommand finishes session creation (design / accelerated / follow-up), 
 
 Lifecycle commands (`check`, `summary`, `edit`, `review`, `follow-up`) accept any of:
 
-- **A Harmonica session URL** — extract the ID from the `?s=<id>` query param or the `/sessions/<id>` path. Works for `app.harmonica.chat`, `pro.harmonica.chat` (legacy, still redirects), `oss.harmonica.chat`. Pattern: `https?://[^/]*harmonica\.chat/(?:chat\?s=|sessions/)([a-zA-Z0-9-]+)`.
-- **A bare UUID** — looks like `abc123de-4567-890f-...`. Use `get_session` with it directly.
+- **A Harmonica session URL.** The two URL families encode the id **differently**, so a single pattern across both is wrong:
+
+  | Form | Where the id is | Encoding |
+  |---|---|---|
+  | `/chat?s=<id>` (participate, results) | the `s` query param | raw |
+  | `/sessions/<segment>` (host view) | the path segment | **base64** |
+
+  So `…/sessions/MDcyODYxNDEtZDMwOC00MmY5LTkyZGItZDgyMzU4ZGY1N2Vl` is the host link for session `07286141-d308-42f9-92db-d82358df57ee`. Decode the segment; do not use it as-is.
+
+  Resolve like this:
+
+  1. Parse the URL. If there is an `s` query param, that value **is** the id.
+  2. Otherwise, if the path ends `/sessions/<segment>`, base64-decode the segment (URL-decode first, since it may be percent-encoded). If the decoded value is a valid id, use it. If not, fall back to using the segment as a raw id — some tools have emitted `/sessions/<raw-id>` links.
+  3. Validate before using: an id matches `^(?:hst_[0-9a-zA-Z]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$`. **This validation is the whole guard** — base64 decoding returns junk rather than failing on non-base64 input, so a successful decode proves nothing on its own.
+
+  Works for `app.harmonica.chat`, `pro.harmonica.chat` (legacy, still redirects) and `oss.harmonica.chat`.
+
+- **A bare session id** — either format: prefixed (`hst_22185567b69d`) or UUID (`abc123de-4567-890f-…`). Use `get_session` with it directly. Note the underscore in the prefixed form: a character class of `[a-zA-Z0-9-]` silently truncates `hst_22185567b69d` to `hst`.
 - **Topic text** ("Q1 retro", "the brainstorming session") — pass to `search_sessions`; disambiguate if multiple match.
 
 Each lifecycle reference handles its own disambiguation; SKILL.md's job is just to normalize URL → ID before handing off.
@@ -62,9 +78,9 @@ Only on the no-args guided path (path 1). Fetch the latest version from GitHub:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/SKILL.md | grep -m1 '<!-- harmonica-chat v'
 ```
 
-Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v3.3.0` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v3.3.1` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v3.3.0`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v3.3.1`). Run this to update:
 > ```
 > curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh | bash
 > ```
