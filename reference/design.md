@@ -231,7 +231,7 @@ Only show diff formatting for the field(s) that actually changed. Unchanged fiel
 
 The facilitation prompt depends on whether a template was chosen in Step 2:
 
-- **A template was chosen** (`template_id` is set) — **do NOT generate a prompt yourself**. The platform has each template's `facilitation_prompt` stored in the `templates` table; it will use it automatically when `create_session` is called with `template_id`. Omitting the `prompt` field lets the template do its job. If you generate a prompt anyway, you'll override the curated template prompt with one you invented from outside, which defeats the point of picking the template.
+- **A template was chosen** (`template_id` is set) — **do NOT generate a prompt yourself**. Omit `prompt` so the v1/MCP creation path generates a tailored prompt from the session brief while preserving the template binding, template questions, and runtime phases. Do not claim this directly copies the template's stored `facilitation_prompt`; it currently does not.
 - **Freeform** (no template, or template fell through) — generate a tailored prompt using the structure below. Without it, the facilitator falls back to a generic "skilled facilitator" system prompt that knows nothing about your topic.
 
 Freeform prompt structure:
@@ -285,7 +285,7 @@ Call the `create_session` MCP tool with the gathered fields:
 - `goal` (required)
 - `project_id` (when the host selected an existing Harmonica project)
 - `template_id` (if a template was chosen — use the exact ID returned by `list_templates` in Step 2)
-- `prompt` — **freeform sessions only**. Pass the prompt generated in Step 13. **Omit entirely when `template_id` is set** so the platform uses the template's stored `facilitation_prompt`.
+- `prompt` — **freeform sessions only**. Pass the prompt generated in Step 13. Omit entirely when `template_id` is set so Harmonica generates the session prompt and retains template behavior.
 - `context` (if provided)
 - `critical` (if provided)
 - `cross_pollination` (true/false)

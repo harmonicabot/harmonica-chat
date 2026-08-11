@@ -63,7 +63,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
 If the user picks "Edit something", ask which field to change and go back to that step. When returning to confirm after an edit, use diff formatting to highlight what changed (same approach as design.md Step 12).
 
-**Facilitation prompt:** same conditional rule as [reference/design.md](design.md) Step 13 — generate a freeform prompt ONLY when no template was chosen; when `template_id` is set, omit `prompt` and let the platform use the template's stored `facilitation_prompt`.
+**Facilitation prompt:** same conditional rule as [reference/design.md](design.md) Step 13 — generate a freeform prompt ONLY when no template was chosen; when `template_id` is set, omit `prompt` so Harmonica generates it from the brief while retaining the template binding and runtime behavior.
 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
