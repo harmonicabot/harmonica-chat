@@ -22,7 +22,12 @@ Wait for the user's response.
 
 Call the `list_templates` MCP tool to fetch the live platform template library. Templates are managed by Harmonica admins — what `list_templates` returns IS the source of truth. Do not rely on a hardcoded list.
 
-Match the user's intent (from Step 1) against the returned templates by title and description. Pick the strongest match plus optionally a plausible second.
+Match the user's intent against each template's **process and output**, not shared vocabulary. A template
+fits only when the session should follow that template's described method and produce the same kind
+of result. For example, collecting many independent proposals is not `Proposal Forming`, whose
+process converges a group on one coherent proposal. Never recommend a template merely because its
+title shares words with the topic. Pick the strongest high-confidence match plus optionally a
+plausible second; if confidence is low, proceed freeform.
 
 Use `AskUserQuestion` to present the choice:
 
@@ -183,6 +188,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 > Here's your session design:
 >
 >     Topic:              {topic}
+>     Project:            {Harmonica project title or "None"}
 >     Template:           {template name or "Custom"}
 >     Goal:               {goal}
 >     Context:            {context or "None"}
@@ -277,6 +283,7 @@ If you generated a freeform prompt AND distribution is set to a Telegram group, 
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
 - `goal` (required)
+- `project_id` (when the host selected an existing Harmonica project)
 - `template_id` (if a template was chosen — use the exact ID returned by `list_templates` in Step 2)
 - `prompt` — **freeform sessions only**. Pass the prompt generated in Step 13. **Omit entirely when `template_id` is set** so the platform uses the template's stored `facilitation_prompt`.
 - `context` (if provided)

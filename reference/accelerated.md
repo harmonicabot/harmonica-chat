@@ -4,7 +4,10 @@ The user provided a topic in `$ARGUMENTS`. Skip the intent and topic questions a
 
 **Step 1 — Template Match:**
 
-Call the `list_templates` MCP tool to fetch the live platform template library. Match the topic text against returned titles + descriptions to identify the best fit. If no template matches well, proceed freeform without asking.
+Call the `list_templates` MCP tool to fetch the live platform template library. Match the requested
+session against each template's process and output, not title vocabulary. A request to collect many
+independent ideas or proposals does not match a method that converges on one proposal. Recommend a
+template only at high confidence; otherwise proceed freeform without asking.
 
 If a template matches, use `AskUserQuestion`:
 
@@ -41,6 +44,7 @@ Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 > Here's your session design:
 >
 >     Topic:              {topic}
+>     Project:            {Harmonica project title or "None"}
 >     Template:           {template name or "Freeform"}
 >     Goal:               {goal}
 >     Context:            {context or "None"}
@@ -64,6 +68,7 @@ If the user picks "Edit something", ask which field to change and go back to tha
 Call the `create_session` MCP tool with the gathered fields:
 - `topic` (required)
 - `goal` (required)
+- `project_id` (when an existing Harmonica project was resolved)
 - `template_id` (if a template was chosen — use the exact ID returned by `list_templates`)
 - `prompt` — **freeform sessions only**. Omit entirely when `template_id` is set.
 - `context` (if provided)
@@ -92,6 +97,17 @@ If distribution was set to a Telegram group, also display:
 Then load [reference/invitation.md](invitation.md) and run the invitation flow.
 
 ## Project-Aware Creation
+
+There are two separate project concepts. Do not conflate them:
+
+- A **Harmonica project** groups sessions in the product. Resolve a supplied workspace URL or
+  `wsp_...` ID with `get_project`, show its title in the confirmation, and pass its ID as
+  `project_id` to `create_session`.
+- A **local project directory** provides optional context from files and git history. It does not
+  attach the session in Harmonica.
+
+If the user asks to create a session "inside", "under", or "for" an already identified Harmonica
+project, preserve that project attachment without asking them to repeat the ID.
 
 If `--project <dir>` was provided, or if a workspace directory name appears in the topic text, enrich the session with project context.
 

@@ -4,7 +4,7 @@ description: Design, create, and manage Harmonica deliberation sessions. Use whe
 allowed-tools: mcp__harmonica__*, AskUserQuestion, Read, Bash(git:*), Bash(echo:*), Bash(curl:*)
 ---
 
-<!-- harmonica-chat v3.4.0 -->
+<!-- harmonica-chat v3.4.1 -->
 
 # Harmonica — Session Companion
 
@@ -19,8 +19,9 @@ Shared rules every subcommand inherits. Don't violate them per local convenience
 - **Facilitation prompt comes from the right place.** If a template was chosen, **omit the `prompt` field in `create_session`** so the platform uses the template's stored `facilitation_prompt`. Generating your own prompt overrides curated template prompts and defeats the point of picking a template. Only generate a freeform prompt when NO template applies — without one, the platform falls back to a generic "skilled facilitator" template that knows nothing about your topic.
 - **Don't generate verbose prompts.** No sub-questions, no multi-part questions, no "Step X of Y" structures inside the prompt. Messages are 2-3 sentences max. Participants are on mobile and won't write essays. Think chat, not survey.
 - **Don't show the generated prompt by default.** Generate it internally for the `create_session` call. Only show it if the user explicitly asks to see or edit it.
-- **Don't override template structure unilaterally.** If a template is selected, use it as a guide for the generated prompt's step themes — but still generate a session-specific prompt. Templates provide defaults for goal/context, not facilitation instructions.
+- **Don't override template structure unilaterally.** If a template is selected, use its stored facilitation prompt by omitting `prompt`. Do not generate a session-specific replacement unless the host explicitly switches to freeform.
 - **Don't push templates on freeform users.** If someone wants a custom session, help them design it without a template. Don't force a template choice for the sake of structure.
+- **Never create or mutate without confirmation.** Inference can fill obvious fields, but the host must see the proposed session design and explicitly approve it before `create_session` or a material `update_session` call.
 - **Use `AskUserQuestion` for known options** (template selection, cross-pollination, results visibility, confirmation). The tool always includes an "Other" option, so the user can type freely if needed.
 
 ## Routing
@@ -94,9 +95,9 @@ Only on the no-args guided path (path 1). Fetch the latest version from GitHub:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/SKILL.md | grep -m1 '<!-- harmonica-chat v'
 ```
 
-Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v3.3.1` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v3.4.1` (this file's version). If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v3.3.1`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v3.4.1`). Run this to update:
 > ```
 > curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh | bash
 > ```
