@@ -4,7 +4,7 @@ description: Design, create, and manage Harmonica deliberation sessions. Use whe
 allowed-tools: mcp__harmonica__*, AskUserQuestion, Read, Bash(git:*), Bash(echo:*), Bash(curl:*)
 ---
 
-<!-- harmonica-chat v3.3.1 -->
+<!-- harmonica-chat v3.4.0 -->
 
 # Harmonica — Session Companion
 
@@ -66,6 +66,22 @@ Lifecycle commands (`check`, `summary`, `edit`, `review`, `follow-up`) accept an
 
 Each lifecycle reference handles its own disambiguation; SKILL.md's job is just to normalize URL → ID before handing off.
 
+## Harness Compatibility
+
+The workflow names Harmonica operations semantically. Resolve each operation through the active
+harness's MCP namespace instead of copying Claude Code's tool name literally:
+
+| Harness | Harmonica MCP operation form |
+|---|---|
+| Claude Code | `mcp__harmonica__<operation>` |
+| OpenCode | `tools.harmonica.<operation>` |
+| Codex / Pi agent | Use the namespace shown by the connected MCP server |
+
+Use the harness's native question and file-reading affordances in place of `AskUserQuestion` and
+`Read`. Never shell out to Harmonica's API when the MCP operation exists. If the connected server
+does not expose an operation, stop and report the missing capability instead of guessing a raw HTTP
+endpoint.
+
 ## Preflight
 
 Run these checks based on the routing path above.
@@ -89,7 +105,8 @@ If the fetch fails (network error, timeout), skip silently and proceed — don't
 
 ### MCP Check (all paths)
 
-Check if harmonica-mcp is available by attempting to call the `list_sessions` tool with `limit: 1`.
+Check if harmonica-mcp is available by attempting to call the `list_sessions` operation with
+`limit: 1`, using the active harness's namespace from the table above.
 
 If the tool responds successfully, proceed.
 
@@ -101,7 +118,7 @@ If the tool is not available (tool not found, connection error, or similar failu
 > HARMONICA_API_KEY=hm_live_... bash <(curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh)
 > ```
 >
-> (Get an API key at https://app.harmonica.chat/profile if you don't have one. Then restart Claude Code.)
+> (Get an API key at https://app.harmonica.chat/profile if you don't have one. Then restart the active agent.)
 
 Then STOP. Do not proceed with any other step until harmonica-mcp is available and responding.
 
@@ -109,7 +126,7 @@ Then STOP. Do not proceed with any other step until harmonica-mcp is available a
 
 When multiple paths could accomplish the same job, choose the one that preserves needed context and avoids state coupling:
 
-- **harmonica-mcp tools** (`mcp__harmonica__*`) — canonical path for ALL session operations: list, search, get, get_responses, get_summary, create, update, chat_message, list_telegram_groups. Always prefer over raw HTTP.
+- **harmonica-mcp operations** — canonical path for ALL session operations: list, search, get, get_responses, get_summary, create, update, chat_message, list_telegram_groups. Resolve the operation name through the active harness namespace. Always prefer over raw HTTP.
 - **Raw `curl`** — only for endpoints harmonica-mcp doesn't wrap. Currently the sole legitimate case is the community-admin participation feed in [reference/invitation.md](reference/invitation.md) Step 3 (the community-admin service is intentionally separate from the Harmonica API). Don't use `curl` to hit Harmonica's own API — use the MCP.
 - **Direct database access** (Neon MCP, etc.) — **never**. The Harmonica DB has internal invariants enforced through the API; bypassing them via direct SQL produces broken sessions. If the data you need isn't exposed by harmonica-mcp, file an issue against [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) rather than reaching for the DB.
 - **Other MCPs** (Zapier, Slack, Discord, Linear, etc.) — used at-runtime by [reference/invitation.md](reference/invitation.md) for distribution, IF the user has them configured and pre-approved. If they're not in the user's `~/.claude/settings.json` `permissions.allow`, those calls will prompt — that's expected.

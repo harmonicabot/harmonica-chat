@@ -9,7 +9,7 @@ Unlike a one-shot session creator, harmonica-chat is a guided designer — it wa
 ## Works with
 
 - **[Claude Code](https://claude.ai/code)** — fully supported today, via `~/.claude/skills/harmonica-chat/`. Quick install below.
-- Cursor, Codex, Grok Build, OpenCode, … — the skill is plain Markdown using the [Agent Skills](https://agentskills.io) format. Manual install (copy `SKILL.md` + `reference/` to the agent's skills directory) should work; first-class installers for these are tracked in [HAR-731](https://linear.app/harmonica-pro/issue/HAR-731) / [HAR-1225 → multi-harness packaging](https://linear.app/harmonica-pro/issue/HAR-1225).
+- Cursor, Codex, Grok Build, OpenCode, Pi agent, … — the skill is plain Markdown using the [Agent Skills](https://agentskills.io) format. Manual install (copy `SKILL.md` + `reference/` to the agent's skills directory) should work. OpenCode-specific MCP mapping is documented in [`reference/opencode.md`](reference/opencode.md); first-class installers for other harnesses are tracked in [HAR-1231](https://linear.app/harmonica-pro/issue/HAR-1231).
 
 ## Prerequisites
 
@@ -43,6 +43,13 @@ irm https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install
 6. Verifies the MCP is registered.
 
 Then restart Claude Code and you're done — invoke `/harmonica-chat`, or just describe what you want to facilitate.
+
+### OpenCode installation
+
+OpenCode can use the shared skill files directly. Copy `SKILL.md`, `reference/`, and
+`reference/opencode.md` into the OpenCode skills directory, configure the `harmonica-mcp` server in
+OpenCode's MCP settings with `npx -y harmonica-mcp`, and reload the MCP connection. The skill uses
+`tools.harmonica.<operation>` for Harmonica calls.
 
 ### Manual installation
 
