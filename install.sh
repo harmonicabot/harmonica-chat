@@ -19,6 +19,7 @@ REFERENCE_FILES=(
   "follow-up.md"
   "invitation.md"
   "expertise.md"
+  "opencode.md"
 )
 AUTO_APPROVE_TOOLS=(
   "mcp__harmonica__list_sessions"

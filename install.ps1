@@ -9,7 +9,8 @@ $SkillDir = "$ClaudeDir\skills\harmonica-chat"
 $SettingsFile = "$ClaudeDir\settings.json"
 $ReferenceFiles = @(
   "design.md", "accelerated.md", "status.md", "check.md", "summary.md",
-  "edit.md", "review.md", "follow-up.md", "invitation.md", "expertise.md"
+  "edit.md", "review.md", "follow-up.md", "invitation.md", "expertise.md",
+  "opencode.md"
 )
 $AutoApproveTools = @(
   "mcp__harmonica__list_sessions",
