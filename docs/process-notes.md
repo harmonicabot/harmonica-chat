@@ -18,3 +18,9 @@
 - **State:** master clean + pushed @ dc385ba; v3.3.0 live; install verified end-to-end on Windows Git Bash; macOS/Linux untested but same logic.
 - **Next:** HAR-1226 (telemetry + freshness check, Low) pending in queue. Side-finding HAR-1229 filed (admin templates route has no auth — confirm intentional or fix).
 - **Lesson:** When dropping a hardcoded reference, grep the WHOLE repo for related names BEFORE claiming done. Caught 5 leftover references only when user asked "anything else?". `verification-before-completion` would have caught this — should have run a verification grep after deleting templates.md.
+
+## 2026-08-18 — installer shipped the OpenCode adapter; version check stopped lying
+- **Done:** Added `opencode.md` to `REFERENCE_FILES` in both installers (`4f79676`) — it had been committed in `80a1584` but listed in neither, and both installers `rm` `reference/*.md` before copying, so re-running either one deleted it. Then fixed the version check (`52a857e`, v3.4.4): it compared against a hardcoded `v3.4.2` described as "this file's version" while line 6 read v3.4.3, so every up-to-date user saw a false "update available" on the guided path.
+- **Decisions:** Fixed the version check by making it read the file's own version comment rather than bumping the literal — the literal is what drifted, and had drifted twice. Added `opencode.md` to the arrays rather than correcting the README's "11 reference files" downward, because the file is ~1KB and the alternative lets a mixed-harness install keep losing it.
+- **State:** Both live on master and verified against the raw URLs the installers actually fetch. Two untracked blog drafts in `docs/` belong to another session and were left alone.
+- **Next:** the v4.0.0 packaging work is specced and planned (see harmonica-web-app-pro `docs/plans/2026-08-18-har-1231-harmonica-chat-v4-packaging.md`), gated on a blocking check of whether `npx skills add` resolves a nested plugin skill. Not started.
