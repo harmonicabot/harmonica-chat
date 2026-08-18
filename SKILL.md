@@ -4,7 +4,7 @@ description: Design, create, and manage Harmonica deliberation sessions. Use whe
 allowed-tools: mcp__harmonica__*, AskUserQuestion, Read, Bash(git:*), Bash(echo:*), Bash(curl:*)
 ---
 
-<!-- harmonica-chat v3.4.3 -->
+<!-- harmonica-chat v3.4.4 -->
 
 # Harmonica — Session Companion
 
@@ -95,9 +95,9 @@ Only on the no-args guided path (path 1). Fetch the latest version from GitHub:
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/SKILL.md | grep -m1 '<!-- harmonica-chat v'
 ```
 
-Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against `v3.4.2` (this file's version). If the remote version is newer, inform the user before proceeding:
+Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against the version comment near the top of THIS file (line 6). Read it from the file; never compare against a version literal written elsewhere in this document. If the remote version is newer, inform the user before proceeding:
 
-> **Update available:** harmonica-chat `v{remote}` is out (you have `v3.4.2`). Run this to update:
+> **Update available:** harmonica-chat `v{remote}` is out (you have `v{local}`). Run this to update:
 > ```
 > curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh | bash
 > ```
