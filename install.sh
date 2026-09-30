@@ -20,6 +20,7 @@ REFERENCE_FILES=(
   "invitation.md"
   "expertise.md"
   "opencode.md"
+  "onboarding.md"
 )
 AUTO_APPROVE_TOOLS=(
   "mcp__harmonica__list_sessions"
