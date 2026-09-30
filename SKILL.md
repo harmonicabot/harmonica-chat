@@ -4,7 +4,7 @@ description: Design, create, and manage Harmonica deliberation sessions. Use whe
 allowed-tools: mcp__harmonica__*, AskUserQuestion, Read, Bash(git:*), Bash(echo:*), Bash(curl:*)
 ---
 
-<!-- harmonica-chat v3.4.4 -->
+<!-- harmonica-chat v3.4.5 -->
 
 # Harmonica — Session Companion
 
@@ -14,7 +14,8 @@ Design, create, and manage [Harmonica](https://harmonica.chat) deliberation sess
 
 Shared rules every subcommand inherits. Don't violate them per local convenience.
 
-- **English-only metadata.** Topic, goal, context, critical question, and the generated facilitation prompt MUST be in English, even if the conversation with the user is in another language. Harmonica's facilitation layer is English-only; non-Latin characters (Cyrillic, CJK, etc.) get corrupted into `???` in titles, descriptions, and prompts. Only the actual participant chat during the session supports other languages.
+- **Metadata language follows the participants.** Write the topic, goal, context and critical question in the language participants will read them in, and tell the facilitator in the prompt which language(s) to reply in. The prompt itself may be in English or in the participants' language. Non-Latin text is safe: Cyrillic in every field, the prompt included, was checked on 2026-09-30. It stored intact, rendered on the participant page, and the facilitator followed a Cyrillic-only instruction. That check replaces an older rule saying non-Latin characters turn into `???`. After creating a non-English session, open its join page once to confirm the text renders.
+- **Languages with grammatical gender** (Russian, Ukrainian, Polish, Czech and others): the facilitator otherwise guesses the participant's gender from their name. Tell it to use the gender-neutral register where the language has one (in Russian, formal «вы»), never to infer gender from a name, and never to use combined forms like «сказал(а)».
 - **ONE question per message** in any flow that asks the user (design, accelerated) AND in any facilitation prompt you generate. Never bundle questions. Wait for the answer before moving on.
 - **Facilitation prompt comes from the right place.** If a template was chosen, omit `prompt` so Harmonica generates a tailored session prompt from the brief while preserving the template binding and runtime behavior. The v1/MCP create path does not directly copy the template's stored `facilitation_prompt`. Only generate and pass a prompt for a deliberately freeform session.
 - **Don't generate verbose prompts.** No sub-questions, no multi-part questions, no "Step X of Y" structures inside the prompt. Messages are 2-3 sentences max. Participants are on mobile and won't write essays. Think chat, not survey.

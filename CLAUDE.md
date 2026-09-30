@@ -46,7 +46,7 @@ After session creation (design / accelerated / follow-up), the agent loads `refe
 
 **Facilitation prompt generation is non-negotiable.** The Harmonica API does NOT generate prompts — it falls back to a generic "skilled facilitator" template. Skipping prompt generation produces low-engagement sessions. This is one of the Session Design Laws.
 
-**English-only metadata.** Topic, goal, context, critical question, and prompt must all be in English. Non-Latin characters (Cyrillic, CJK) get corrupted into `???` in session metadata. Only participant chat supports other languages.
+**Metadata language follows the participants (changed 2026-09-30).** This used to be an English-only rule claiming non-Latin characters get corrupted into `???`. A test on 2026-09-30 did not reproduce that. A session created through the MCP with Cyrillic in every field, prompt included, stored it intact, rendered it on the participant page, and the facilitator followed a Cyrillic-only instruction. A second law covers languages with grammatical gender: tell the facilitator to use the neutral register (Russian «вы») and never guess gender from a name.
 
 **Version auto-update.** Line 6 of SKILL.md is `<!-- harmonica-chat vX.Y.Z -->`. On each run, the skill fetches the latest from GitHub and notifies users if outdated. Bump this version comment when making changes. (Pre-v3.0.0 the comment was on line 1, but YAML frontmatter is now line 1 — the version-check curl uses `grep -m1` instead of `head -1`.)
 
