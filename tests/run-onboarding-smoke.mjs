@@ -63,10 +63,15 @@ try {
     for (const scenario of (process.argv[3] ? [process.argv[3]] : ['browser', 'recovery', 'ready'])) {
       const cwd = join(root, harness, scenario);
       mkdirSync(cwd, { recursive: true });
-      const skill = join(cwd, harness === 'claude' ? '.claude' : '.opencode', 'skills', 'harmonica-chat');
+      const plugin = join(cwd, 'fixture-plugin');
+      const skill = harness === 'claude' ? join(plugin, 'skills', 'harmonica-chat') : join(cwd, '.opencode', 'skills', 'harmonica-chat');
       mkdirSync(skill, { recursive: true });
       copyFileSync(join(repo, 'SKILL.md'), join(skill, 'SKILL.md'));
       cpSync(join(repo, 'reference'), join(skill, 'reference'), { recursive: true });
+      if (harness === 'claude') {
+        mkdirSync(join(plugin, '.claude-plugin'), { recursive: true });
+        writeFileSync(join(plugin, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'onboarding-fixture', version: '1.0.0' }));
+      }
       const audit = join(cwd, 'calls.jsonl');
       const state = join(cwd, 'synthetic-created.json');
       const mcp = { command: process.execPath, args: [join(repo, 'tests', 'fixtures', 'onboarding-mcp.mjs'), scenario, audit, state, harness === 'claude' ? 'claude_code' : 'opencode'] };
@@ -76,7 +81,7 @@ try {
         writeFileSync(join(cwd, 'mcp.json'), JSON.stringify({ mcpServers: { harmonica: mcp } }));
         const cli = join(realHome, '.local', 'bin', 'claude.exe');
         const sessionId = randomUUID();
-        const args = ['--restricted', '--strict-mcp-config', '--mcp-config', join(cwd, 'mcp.json'), '--setting-sources', 'project', '--tools', 'Read,Skill,AskUserQuestion', '--allowedTools', 'Read,Skill,mcp__harmonica__*', '--permission-mode', 'dontAsk', '--max-budget-usd', '1', '--output-format', 'stream-json', '--verbose', '--append-system-prompt', preamble];
+        const args = ['--restricted', '--plugin-dir', plugin, '--strict-mcp-config', '--mcp-config', join(cwd, 'mcp.json'), '--setting-sources', 'project', '--tools', 'Read,Skill,AskUserQuestion', '--allowedTools', 'Read,Skill,mcp__harmonica__*', '--permission-mode', 'dontAsk', '--max-budget-usd', '1', '--output-format', 'stream-json', '--verbose', '--append-system-prompt', preamble];
         first = await run(cli, [...args, '--session-id', sessionId, '-p', prompt], cwd, env);
         firstCalls = calls(audit);
         if (scenario === 'ready' && first.code === 0 && !firstCalls.some(c => c.name === 'create_session')) {
@@ -105,8 +110,15 @@ try {
       const creates = seen.filter(c => c.name === 'create_session');
       const events = first.text.split('\n').flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } });
       const tools = events.flatMap(e => e.message?.content ?? []).filter(c => c.type === 'tool_use');
+      const toolResults = events.flatMap(e => e.message?.content ?? []).filter(c => c.type === 'tool_result');
       const last = events.findLast(e => e.type === 'result');
       const init = events.find(e => e.type === 'system' && e.subtype === 'init');
+      const firstMcp = tools.findIndex(t => t.name?.startsWith('mcp__harmonica__'));
+      const skillReadBeforeMcp = tools.some((t, index) => t.name === 'Read'
+        && index < firstMcp && t.input?.file_path?.replaceAll('\\', '/') === join(skill, 'SKILL.md').replaceAll('\\', '/')
+        && toolResults.some(r => r.tool_use_id === t.id && !r.is_error));
+      const skillCalls = tools.filter(t => t.name === 'Skill');
+      const nativeSkillInvocationSucceeded = skillCalls.some(t => toolResults.some(r => r.tool_use_id === t.id && !r.is_error));
       const fingerprinted = seen.length > 0 && seen.every(c => c.args.client === 'harmonica-chat' && c.args.client_version === '3.5.0');
       const consentHeld = !firstCalls.some(c => c.name === 'create_session');
       const passed = first.code === 0 && fingerprinted && consentHeld && (scenario === 'browser'
@@ -119,13 +131,14 @@ try {
         passed, calls: names, allFingerprinted: fingerprinted, noCreationBeforeConfirmation: consentHeld,
         fingerprintArguments: seen.map(c => ({ operation: c.name, fields: Object.keys(c.args), clientMatches: c.args.client === 'harmonica-chat', version: /^\d+\.\d+\.\d+$/.test(c.args.client_version ?? '') ? c.args.client_version : null })),
         builtInTools: tools.map(t => t.name), skillInvoked: tools.some(t => t.name === 'Skill'),
+        nativeSkillInvocationSucceeded, skillReadBeforeMcp,
         resultSubtype: last?.subtype ?? null, reportedCostUsd: last?.total_cost_usd ?? null,
         resultIsError: last?.is_error ?? null,
-        installedSkillDiscovered: Array.isArray(init?.skills) && init.skills.some(s => (typeof s === 'string' ? s : s.name) === 'harmonica-chat'),
+        installedSkillDiscovered: Array.isArray(init?.skills) && init.skills.some(s => /(^|:)harmonica-chat$/.test(typeof s === 'string' ? s : s.name)),
         limitOrQuotaMentioned: /hit your limit|usage limit|quota|credit balance|rate limit|too many requests|429/i.test(first.text),
         authenticationMentioned: /authentication|oauth|not logged in|log in|401|unauthorized/i.test(last?.result ?? ''),
-        configurationErrorMentioned: /invalid settings|invalid.*permission|not supported|not allowed.*restricted|must.*verbose/i.test(first.text),
-        skillMissing: /unknown skill|skill not found|no skills|not available.*skill/i.test(first.text),
+        configurationErrorMentioned: /invalid settings|invalid.*permission|not supported|not allowed.*restricted|must.*verbose/i.test(last?.result ?? ''),
+        skillMissing: skillCalls.some(t => toolResults.some(r => r.tool_use_id === t.id && r.is_error)),
         created: creates.length, recovered: names.includes('get_session'),
         attributionCorrect: creates.length === 0 ? null : creates.every(c => c.args.onboarding_flow_id === flow),
         outputMentionsAuthFailure: /not logged in|authentication failed|unauthorized|login required|API key missing|credentials not found/i.test(first.text),
