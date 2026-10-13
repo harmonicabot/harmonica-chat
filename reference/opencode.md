@@ -27,5 +27,7 @@ confirmation boundaries as the shared references.
 
 ## Connection Check
 
-Before acting, call `tools.harmonica.list_sessions` with `limit: 1` and the installed skill fingerprint. If that fails, tell the user
+For onboarding, follow [onboarding.md](onboarding.md) instead; do not apply the ordinary connection recovery below.
+
+For ordinary design or lifecycle operations, call `tools.harmonica.list_sessions` with `limit: 1` and the installed skill fingerprint. If that fails, tell the user
 to reload the Harmonica MCP connection and stop rather than falling back to raw HTTP.

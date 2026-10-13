@@ -11,6 +11,8 @@ test('installed skill version and onboarding route are discoverable', () => {
   assert.match(router, /Onboarding continuation[\s\S]*reference\/onboarding\.md/);
   assert.match(router, /Read `<installed version>` from the `<!-- harmonica-chat vX\.Y\.Z -->` comment/);
   assert.match(router, /including preflight, template and project reads/);
+  assert.match(router, /ordinary local-npm design\/lifecycle calls whose schema does not expose/);
+  assert.match(router, /Onboarding has no such exception/);
 });
 
 test('onboarding does not silently bypass verification, consent, or recovery', () => {
@@ -34,4 +36,20 @@ test('both installers ship the route without auto-approving its verification wri
     assert.doesNotMatch(source, /mcp__harmonica__continue_onboarding/);
   }
   assert.match(read('reference/opencode.md'), /tools\.harmonica\.continue_onboarding/);
+});
+
+test('onboarding intent never falls through to ordinary creation or legacy setup', () => {
+  assert.match(router, /even if the flow ID is missing or malformed/);
+  assert.match(router, /load \[reference\/onboarding\.md\]\(reference\/onboarding\.md\) before preflight/);
+  assert.match(onboarding, /If the flow ID is missing or malformed, ask for the browser-provided flow UUID and stop/);
+  assert.match(router, /Onboarding requests follow onboarding\.md's hosted-only recovery/);
+  assert.match(read('reference/opencode.md'), /For onboarding, follow \[onboarding\.md\]\(onboarding\.md\) instead/);
+});
+
+test('ready handoff is validated and template read precedes confirmed creation', () => {
+  assert.match(onboarding, /returned `flow_id` must match the requested UUID/);
+  assert.match(onboarding, /Always call `list_templates` with the skill fingerprint before designing a new session/);
+  assert.match(onboarding, /including results visibility, cross-pollination, widgets, distribution, and pre-session questions/);
+  assert.match(onboarding, /Never invoke the design references' ordinary create\/retry steps/);
+  assert.match(onboarding, /Only on a provider\/model-access error/);
 });

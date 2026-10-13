@@ -52,9 +52,13 @@ After session creation (design / accelerated / follow-up / onboarding), the agen
 
 **Version auto-update.** The version comment near the top of SKILL.md is `<!-- harmonica-chat vX.Y.Z -->`. Guided design checks GitHub and notifies users if outdated; every Harmonica MCP call includes this installed version (without `v`) as `client_version`. Bump the comment on functional changes. The version-check curl uses `grep -m1`, not `head -1`.
 
+**Onboarding compatibility.** Dispatch onboarding intent before ordinary preflight, even with a missing flow ID. Its recovery must stay hosted-only; never recommend the local installer. Inspect connected tool schemas: hosted onboarding requires fingerprint and flow parameters, while ordinary local-npm calls omit unsupported fingerprint fields. Reusing design questions does not authorize their ordinary create/retry path.
+
 ## Development Workflow
 
-No build step or linter. `node --test tests/onboarding.test.mjs` checks onboarding route/install integrity; it is not a substitute for fresh-profile Claude Code and OpenCode behavior checks.
+No build step or linter. `node --test tests/onboarding.test.mjs tests/onboarding-fixture.test.mjs` checks onboarding route/install integrity and synthetic fixture behavior; it is not a substitute for fresh-profile Claude Code and OpenCode behavior checks.
+
+**Manual paid smoke (Windows):** `node tests/run-onboarding-smoke.mjs` runs the skill in temporary Claude Code/OpenCode profiles against synthetic stdio MCP replies. Obtain explicit model-usage approval first. It reuses existing, unexpired OAuth identities only, does not refresh them, fails fast on a failed scenario, and deletes its temporary profiles. Use `node tests/run-onboarding-smoke.mjs claude browser` for a single targeted diagnostic. This is fixture-backed agent evidence, not production or a real hosted-contract pass.
 
 **To test changes**: Run the install script (`bash install.sh`) to copy local SKILL.md + reference/ to `~/.claude/skills/harmonica-chat/`. Then invoke `/harmonica-chat` in Claude Code. The post-commit hook (if configured) does this automatically on commit.
 Do not run the legacy installer to test the hosted onboarding recipe: it configures the local npm MCP server and modifies the user's global Claude settings. Use an isolated clean harness profile and the hosted endpoint instead, with explicit authorization for any shared-service restart or credential operation.
