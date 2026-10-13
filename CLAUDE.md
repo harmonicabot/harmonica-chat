@@ -4,19 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-harmonica-chat is a Claude Code skill (`/harmonica-chat`) that designs, creates, and manages [Harmonica](https://harmonica.chat) deliberation sessions. It's distributed as a thin entry router (`SKILL.md`) plus 11 subcommand reference files (`reference/*.md`) that users install to `~/.claude/skills/harmonica-chat/`.
+harmonica-chat is a Claude Code skill (`/harmonica-chat`) that designs, creates, and manages [Harmonica](https://harmonica.chat) deliberation sessions. It's distributed as a thin entry router (`SKILL.md`) plus lazy-loaded reference files (`reference/*.md`) that users install to `~/.claude/skills/harmonica-chat/`.
 
 The skill requires the [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) server for API access.
 
 ## Repository Structure
 
 - `SKILL.md` — Entry router (~120 lines). Frontmatter, prerequisites, session design laws, argument routing, commands menu. This file MUST stay thin; subcommand logic lives in `reference/`.
-- `reference/` — 11 subcommand reference files. Loaded on demand by the entry router.
+- `reference/` — subcommand reference files. Loaded on demand by the entry router.
   - `design.md` — Mode 1: guided session design, 14 steps
   - `accelerated.md` — Mode 2: topic-upfront flow + project-aware creation
   - `status.md`, `check.md`, `summary.md`, `edit.md`, `review.md`, `follow-up.md` — lifecycle commands
   - `invitation.md` — post-creation invitation flow (join URL, draft message, community feed)
   - `expertise.md` — soft-nudge session design heuristics (goal quality, context calibration, cross-pollination, critical questions)
+  - `onboarding.md` — hosted-MCP continuation for a saved Shape C flow; ordinary local-npm sessions stay on existing routes
 
 Templates are NOT in `reference/` — they're fetched at runtime via `mcp__harmonica__list_templates` (harmonica-mcp ≥ 0.11.0). The Harmonica admin panel is the single source of truth; the skill never hardcodes a template list. See [HAR-1227](https://linear.app/harmonica-pro/issue/HAR-1227).
 - `install.sh` / `install.ps1` — One-line installers. Download SKILL.md + all reference files. v3.0.0+ also migrates the legacy v2.x slash-command install (removes `~/.claude/commands/harmonica-chat.md` if present).
@@ -33,10 +34,11 @@ The entry router (`SKILL.md`):
 4. Routes `$ARGUMENTS` to the matching reference file:
    - empty → `reference/design.md`
    - lifecycle keyword (`status` / `check` / `summary` / `edit` / `review` / `follow-up`) → matching `reference/<keyword>.md`
+   - onboarding continuation with a flow UUID → `reference/onboarding.md`
    - anything else → `reference/accelerated.md`
 5. The agent **must load the matching reference file** before acting. This is non-negotiable — trying to reconstruct subcommand behavior from memory produces drift.
 
-After session creation (design / accelerated / follow-up), the agent loads `reference/invitation.md` to handle invitation drafting and optional community feed posting.
+After session creation (design / accelerated / follow-up / onboarding), the agent loads `reference/invitation.md` to handle invitation drafting and optional community feed posting.
 
 ## Key Design Decisions
 
@@ -48,15 +50,23 @@ After session creation (design / accelerated / follow-up), the agent loads `refe
 
 **Metadata language follows the participants (changed 2026-09-30).** This used to be an English-only rule claiming non-Latin characters get corrupted into `???`. A test on 2026-09-30 did not reproduce that. A session created through the MCP with Cyrillic in every field, prompt included, stored it intact, rendered it on the participant page, and the facilitator followed a Cyrillic-only instruction. A second law covers languages with grammatical gender: tell the facilitator to use the neutral register (Russian «вы») and never guess gender from a name.
 
-**Version auto-update.** Line 6 of SKILL.md is `<!-- harmonica-chat vX.Y.Z -->`. On each run, the skill fetches the latest from GitHub and notifies users if outdated. Bump this version comment when making changes. (Pre-v3.0.0 the comment was on line 1, but YAML frontmatter is now line 1 — the version-check curl uses `grep -m1` instead of `head -1`.)
+**Version auto-update.** The version comment near the top of SKILL.md is `<!-- harmonica-chat vX.Y.Z -->`. Guided design checks GitHub and notifies users if outdated; every Harmonica MCP call includes this installed version (without `v`) as `client_version`. Bump the comment on functional changes. The version-check curl uses `grep -m1`, not `head -1`.
+
+**Onboarding compatibility.** Dispatch onboarding intent before ordinary preflight, even with a missing flow ID. Its recovery must stay hosted-only; never recommend the local installer. Inspect connected tool schemas: hosted onboarding requires fingerprint and flow parameters, while ordinary local-npm calls omit unsupported fingerprint fields. Reusing design questions does not authorize their ordinary create/retry path.
 
 ## Development Workflow
 
-No build step, linter, or test suite. The product is markdown interpreted by Claude Code at runtime.
+No build step or linter. `node --test tests/onboarding.test.mjs tests/onboarding-fixture.test.mjs` checks onboarding route/install integrity and synthetic fixture behavior; it is not a substitute for fresh-profile Claude Code and OpenCode behavior checks.
+
+**Manual paid smoke (Windows):** `node tests/run-onboarding-smoke.mjs` runs the skill in temporary Claude Code/OpenCode profiles against synthetic stdio MCP replies. Obtain explicit model-usage approval first. It reuses existing, unexpired OAuth identities only, does not refresh them, fails fast on a failed scenario, and deletes its temporary profiles. Use `node tests/run-onboarding-smoke.mjs claude browser` for a single targeted diagnostic. This is fixture-backed agent evidence, not production or a real hosted-contract pass.
+The restricted Claude profile exposes the candidate skill as an explicit session-local plugin (`--plugin-dir`); do not assume project skill discovery occurred or classify a missing-skill/fingerprint failure as product evidence before checking loading. Plugin-backed workflow evidence does not prove the skills-CLI installation path. Report actual MCP call order, fingerprint, and confirmation/recovery boundaries separately from skill-discovery metadata.
+For OpenCode V2, inspect the consumer with `auth list`; current credentials live in SQLite, not legacy `auth.json`. The smoke captures a provider-scoped native `auth export` privately and imports the existing unexpired identity into its temporary DB, with refresh disabled. Never infer a live-auth outage from the legacy file or change the user's authentication to repair that stale-file reading.
+Classify failures from the actual error/final reply, not keyword matches over the whole trace (which contains skill instructions). Preserve the session ID for confirmation turns; report missing tool visibility on resume as an unresolved harness/runtime question, not proof that the hosted Harmonica tool is absent. `--draft-only` limits a ready-flow diagnostic to the proposal/confirmation boundary.
 
 **To test changes**: Run the install script (`bash install.sh`) to copy local SKILL.md + reference/ to `~/.claude/skills/harmonica-chat/`. Then invoke `/harmonica-chat` in Claude Code. The post-commit hook (if configured) does this automatically on commit.
+Do not run the legacy installer to test the hosted onboarding recipe: it configures the local npm MCP server and modifies the user's global Claude settings. Use an isolated clean harness profile and the hosted endpoint instead, with explicit authorization for any shared-service restart or credential operation.
 
-**To release**: Push to `master`. Users with auto-update enabled will be notified on next run. Update the version comment in line 6 of SKILL.md when making functional changes. Use semver:
+**To release**: Merge the reviewed PR into `master`. Users with auto-update enabled will be notified on their next guided design run. Update the version comment in SKILL.md when making functional changes. Use semver:
 - Patch (v3.0.X) — typo fixes, small clarifications, no behavior change
 - Minor (v3.X.0) — new subcommand, new option, additive change
 - Major (vX.0.0) — install format changes, breaking changes to invocation

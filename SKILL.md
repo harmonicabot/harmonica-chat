@@ -1,10 +1,10 @@
 ---
 name: harmonica-chat
-description: Design, create, and manage Harmonica deliberation sessions. Use when the user wants to set up a structured async conversation, run a retrospective / brainstorming / SWOT / risk-assessment session, check or review an existing session's responses, get its summary, edit its metadata, or design a follow-up. Subcommands are loaded on demand from reference/.
+description: Design, create, and manage Harmonica deliberation sessions. Use when the user wants to continue Harmonica onboarding, set up a structured async conversation, run a retrospective / brainstorming / SWOT / risk-assessment session, check or review an existing session's responses, get its summary, edit its metadata, or design a follow-up. Subcommands are loaded on demand from reference/.
 allowed-tools: mcp__harmonica__*, AskUserQuestion, Read, Bash(git:*), Bash(echo:*), Bash(curl:*)
 ---
 
-<!-- harmonica-chat v3.4.5 -->
+<!-- harmonica-chat v3.5.0 -->
 
 # Harmonica — Session Companion
 
@@ -31,16 +31,23 @@ Route by intent FIRST. Preflight ceremony (version check, MCP check) is only run
 
 Parse `$ARGUMENTS` to determine which reference to load:
 
-1. **Empty or no arguments** — Run **full preflight**, then load [reference/design.md](reference/design.md) and follow it (guided session design, 14 steps).
-2. **First word is a lifecycle keyword** (`status`, `check`, `summary`, `follow-up`, `edit`, `review`) — Skip the GitHub version check (fast lifecycle ops don't need it). Run **MCP check only**, then [resolve the session reference](#session-reference-resolution) and load `reference/<keyword>.md`. Everything after the keyword is the session reference (URL, ID, topic text, or partial match).
-3. **Anything else** (topic text, flags, etc.) — Skip the GitHub version check (user has clear intent, don't slow them down). Run **MCP check only**, then load [reference/accelerated.md](reference/accelerated.md) and follow it.
+1. **Onboarding continuation** — If the user asks to continue Harmonica onboarding (for example, `Continue my Harmonica onboarding for flow <flow-id>`), even if the flow ID is missing or malformed, load [reference/onboarding.md](reference/onboarding.md) before preflight and follow its hosted-only checks. Do not treat the flow ID as a topic or use ordinary accelerated creation.
+2. **Empty or no arguments** — Run **full preflight**, then load [reference/design.md](reference/design.md) and follow it (guided session design, 14 steps).
+3. **First word is a lifecycle keyword** (`status`, `check`, `summary`, `follow-up`, `edit`, `review`) — Skip the GitHub version check (fast lifecycle ops don't need it). Run **MCP check only**, then [resolve the session reference](#session-reference-resolution) and load `reference/<keyword>.md`. Everything after the keyword is the session reference (URL, ID, topic text, or partial match).
+4. **Anything else** (topic text, flags, etc.) — Skip the GitHub version check (user has clear intent, don't slow them down). Run **MCP check only**, then load [reference/accelerated.md](reference/accelerated.md) and follow it.
    - Extract the topic: first quoted string, or all text before the first `--` flag.
    - Extract `--project <dir>` if present (triggers the Project-Aware Creation flow inside accelerated.md).
    - If only `--project <dir>` is present with no topic text, still load accelerated.md — detect the project first and ask for a topic based on the project context.
 
 **Loading the reference file is non-negotiable.** It's what keeps subcommand behavior consistent across sessions. Don't try to reconstruct a subcommand from memory or from this entry file — read the reference.
 
-When a subcommand finishes session creation (design / accelerated / follow-up), load [reference/invitation.md](reference/invitation.md) and run the invitation flow.
+When a subcommand finishes session creation (design / accelerated / follow-up / onboarding), load [reference/invitation.md](reference/invitation.md) and run the invitation flow.
+
+### Skill fingerprint on every Harmonica call
+
+Pass `client: 'harmonica-chat'` and `client_version: '<installed version>'` on **every** Harmonica MCP call, including preflight, template and project reads, onboarding handoff, session creation, and invitation-related Harmonica reads. Read `<installed version>` from the `<!-- harmonica-chat vX.Y.Z -->` comment near the top of this installed SKILL.md (without the `v`); never use the remote version or a hardcoded value from another reference. The hosted onboarding contract rejects a missing or mismatched fingerprint. Do not send the fingerprint to other services.
+
+**Legacy schema compatibility:** inspect the connected tool schema. For ordinary local-npm design/lifecycle calls whose schema does not expose `client`/`client_version`, omit those unsupported fields rather than breaking a working local setup. Onboarding has no such exception: both fingerprint fields and `continue_onboarding` plus `create_session.onboarding_flow_id` must be exposed, or stop with the hosted-upgrade message.
 
 ### Session reference resolution
 
@@ -90,7 +97,7 @@ Run these checks based on the routing path above.
 
 ### Version Check (design path only)
 
-Only on the no-args guided path (path 1). Fetch the latest version from GitHub:
+Only on the no-args guided design path. Fetch the latest version from GitHub:
 
 ```bash
 curl -sf https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/SKILL.md | grep -m1 '<!-- harmonica-chat v'
@@ -105,10 +112,12 @@ Compare the version in the response (`<!-- harmonica-chat vX.Y.Z -->`) against t
 
 If the fetch fails (network error, timeout), skip silently and proceed — don't block session creation over an update check.
 
-### MCP Check (all paths)
+### MCP Check (ordinary design and lifecycle paths)
+
+Onboarding requests follow onboarding.md's hosted-only recovery instead of the legacy installer below, including when a connection is absent or fails.
 
 Check if harmonica-mcp is available by attempting to call the `list_sessions` operation with
-`limit: 1`, using the active harness's namespace from the table above.
+`limit: 1` and the skill fingerprint, using the active harness's namespace from the table above.
 
 If the tool responds successfully, proceed.
 
@@ -139,6 +148,7 @@ When multiple paths could accomplish the same job, choose the one that preserves
 |----------|---------|-----------|--------------|
 | **Create** | *(no args)* | [reference/design.md](reference/design.md) | Guided session design, 14 steps, one question at a time |
 | **Create** | `<topic>` | [reference/accelerated.md](reference/accelerated.md) | Faster flow with topic upfront; supports `--project <dir>` for project-aware context |
+| **Create** | `Continue my Harmonica onboarding for flow <flow-id>` | [reference/onboarding.md](reference/onboarding.md) | Verify hosted MCP setup, resume the saved browser journey or design the first session from its handoff |
 | **Manage** | `status` | [reference/status.md](reference/status.md) | List recent sessions grouped by Active / Completed |
 | **Manage** | `check <ref>` | [reference/check.md](reference/check.md) | Thematic preview of a session's responses so far |
 | **Manage** | `summary <ref>` | [reference/summary.md](reference/summary.md) | Get the AI-generated synthesis once the session is done |
@@ -150,6 +160,7 @@ For lifecycle commands, `<ref>` can be a Harmonica session URL, a bare UUID, or 
 
 Supporting references (load when needed):
 
+- [reference/onboarding.md](reference/onboarding.md) — Hosted Shape C onboarding continuation (flow-specific; ordinary local-npm sessions use the existing routes)
 - [reference/expertise.md](reference/expertise.md) — Session design expertise (goal quality nudges, context calibration, cross-pollination recommendation, critical-question constraint discovery)
 - [reference/invitation.md](reference/invitation.md) — Post-creation invitation flow (join URL, draft message, community feed, follow-up prompt)
 

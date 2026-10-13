@@ -10,6 +10,7 @@ the other references as follows:
 - `list_sessions` -> `tools.harmonica.list_sessions`
 - `list_templates` -> `tools.harmonica.list_templates`
 - `create_session` -> `tools.harmonica.create_session`
+- `continue_onboarding` -> `tools.harmonica.continue_onboarding` (hosted MCP only)
 - `update_session` -> `tools.harmonica.update_session`
 - `get_session` -> `tools.harmonica.get_session`
 - `get_responses` -> `tools.harmonica.get_responses`
@@ -26,5 +27,7 @@ confirmation boundaries as the shared references.
 
 ## Connection Check
 
-Before acting, call `tools.harmonica.list_sessions` with `limit: 1`. If that fails, tell the user
+For onboarding, follow [onboarding.md](onboarding.md) instead; do not apply the ordinary connection recovery below.
+
+For ordinary design or lifecycle operations, call `tools.harmonica.list_sessions` with `limit: 1` and the installed skill fingerprint. If that fails, tell the user
 to reload the Harmonica MCP connection and stop rather than falling back to raw HTTP.

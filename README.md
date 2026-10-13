@@ -37,7 +37,7 @@ irm https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install
 
 1. Verifies `HARMONICA_API_KEY` is set, `claude` CLI is on PATH, `node` is available.
 2. Configures the `harmonica` MCP server in Claude Code (`claude mcp add-json harmonica … -s user`) with your key — idempotent; skips if already configured.
-3. Installs `SKILL.md` + 11 `reference/*.md` files to `~/.claude/skills/harmonica-chat/`.
+3. Installs `SKILL.md` + 12 `reference/*.md` files to `~/.claude/skills/harmonica-chat/`.
 4. Pre-approves the 6 read-only `mcp__harmonica__*` tools (`list_sessions`, `search_sessions`, `get_session`, `get_responses`, `get_summary`, `list_telegram_groups`) by adding them to `~/.claude/settings.json` `permissions.allow` — fewer prompts during use; mutations (`create_session`, `update_session`) still require confirmation.
 5. Removes the legacy v2.x slash-command install at `~/.claude/commands/harmonica-chat.md` if present.
 6. Verifies the MCP is registered.
@@ -50,6 +50,14 @@ OpenCode can use the shared skill files directly. Copy `SKILL.md`, `reference/`,
 `reference/opencode.md` into the OpenCode skills directory, configure the `harmonica-mcp` server in
 OpenCode's MCP settings with `npx -y harmonica-mcp`, and reload the MCP connection. The skill uses
 `tools.harmonica.<operation>` for Harmonica calls.
+
+### Continue onboarding through hosted MCP (Claude Code or OpenCode)
+
+If the Harmonica welcome journey offers AI-assistant access, use its **dedicated, revocable setup key** to configure the **hosted** MCP endpoint, `https://app.harmonica.chat/api/mcp/mcp`, in the chosen harness. Install the `harmonica-chat` skill alongside it; the MCP connection supplies tools, while the skill supplies the guided creation and fingerprinted handoff. These are separate from any BYOM provider credential.
+
+Use the onboarding screen's harness-specific recipe rather than pasting a key into chat, a repository file, a URL, or a command-line argument. Keep the bearer in your local environment and the harness configuration as an environment-variable reference; reload the harness after installation. With this skill installed, ask: `Continue my Harmonica onboarding for flow <flow-id>` (use the flow ID shown in the browser). The skill calls `continue_onboarding`, guides you back to `/welcome` if browser steps remain, and asks for confirmation before creating your first session from the saved handoff. If a creation response was lost, it returns the already attributed session rather than creating another.
+
+**Existing local-npm users:** the ordinary session-design commands and the installers above still work with `harmonica-mcp`. The onboarding flow specifically requires the hosted endpoint; do not substitute local npm MCP for it or switch a working local setup silently. The onboarding UI/flag is a separate future release; this skill update only provides the continuation route when a host already has a compatible saved flow.
 
 ### Manual installation
 
@@ -116,7 +124,7 @@ Reads the project's CLAUDE.md and recent git history to auto-generate session co
 
 ## Architecture
 
-v3.0.0 splits the skill into a thin entry router (`SKILL.md`, ~120 lines) plus 11 subcommand reference files in `reference/` that load on demand. The router parses your input, decides which reference to load, and follows that reference's instructions.
+v3.0.0 split the skill into a thin entry router (`SKILL.md`) plus lazy-loaded subcommand references in `reference/`. The router parses your input, decides which reference to load, and follows that reference's instructions.
 
 ```
 harmonica-chat/
@@ -130,6 +138,8 @@ harmonica-chat/
     ├── edit.md               Update session metadata
     ├── review.md             Facilitation quality analysis + prompt fixes
     ├── follow-up.md          Design a next-step session
+    ├── onboarding.md         Resume a saved hosted-MCP onboarding flow
+    ├── opencode.md           Harness-specific MCP operation mapping
     ├── invitation.md         Post-creation invitation flow
     └── expertise.md          Soft-nudge session design heuristics
 ```
