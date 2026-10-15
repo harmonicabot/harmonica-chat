@@ -53,6 +53,16 @@ test('fixture persists one synthetic creation before losing its reply, then reco
     assert.equal(existsSync(state), true);
     const recovered = await call('continue_onboarding', { ...fingerprint, flow_id: flow });
     assert.equal(recovered.value.created_session_id, 'fixture-created-session');
+    assert.equal((await call('get_session', { ...fingerprint, session_id: 'wrong-session' })).error, true);
+    const session = await call('get_session', { ...fingerprint, session_id: recovered.value.created_session_id });
+    assert.equal(session.error, false);
+    assert.equal(session.value.id, recovered.value.created_session_id);
     assert.match((await call('create_session', { ...fingerprint, onboarding_flow_id: flow })).value.error, /duplicate/);
+  });
+});
+
+test('fixture refuses recovery before creation and browser reads for a nonexistent session', { timeout: 5000 }, async () => {
+  await withServer('browser', async ({ call }) => {
+    assert.equal((await call('get_session', { ...fingerprint, session_id: 'fixture-created-session' })).error, true);
   });
 });

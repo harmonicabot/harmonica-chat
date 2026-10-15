@@ -1,10 +1,11 @@
 // Synthetic-only stdio MCP. No network, credentials, or production writes.
 import { createInterface } from 'node:readline';
 import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
+import { FIXTURE_FLOW, FIXTURE_SESSION } from '../onboarding-smoke-support.mjs';
 
 const [scenario, audit, stateFile, harness] = process.argv.slice(2);
-const flow = '123e4567-e89b-42d3-a456-426614174000';
-const session = 'fixture-created-session';
+const flow = FIXTURE_FLOW;
+const session = FIXTURE_SESSION;
 const fields = {
   client: { type: 'string' }, client_version: { type: 'string' },
 };
@@ -35,7 +36,11 @@ function call(name, args) {
   if (name === 'list_sessions') return { sessions: [] };
   if (name === 'list_templates') return { templates: [] };
   if (name === 'list_telegram_groups') return { groups: [] };
-  if (name === 'get_session') return { id: session, status: 'active', join_url: 'https://example.invalid/chat?s=fixture-created-session' };
+  if (name === 'get_session') {
+    if (args.session_id !== session) return { error: 'Fixture recovery session mismatch.' };
+    if (scenario !== 'recovery' && !existsSync(stateFile)) return { error: 'No synthetic session exists yet.' };
+    return { id: session, status: 'active', join_url: 'https://example.invalid/chat?s=fixture-created-session' };
+  }
   if (name === 'continue_onboarding') {
     if (args.flow_id !== flow) return { error: 'Fixture flow mismatch.' };
     const base = { flow_id: flow, access_mode: 'mcp', harness };
