@@ -6,40 +6,45 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync,
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { createSmokeBudget, evaluateOnboardingCalls, FIXTURE_FLOW, parseSmokeArgs, SmokeDeadlineExceeded } from './onboarding-smoke-support.mjs';
+import { cleanupSmokeProfile, createSmokeProcessRunner, SmokeProcessTimeout } from './onboarding-process-control.mjs';
 
+// Validate before profile creation or touching any existing authentication.
+const selection = parseSmokeArgs(process.argv.slice(2));
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const realHome = process.env.USERPROFILE;
 const root = mkdtempSync(join(process.env.LOCALAPPDATA, 'Temp', 'opencode', 'onboarding-smoke-'));
-const flow = '123e4567-e89b-42d3-a456-426614174000';
+const flow = FIXTURE_FLOW;
 const results = [];
-const active = new Set();
-const draftOnly = process.argv.includes('--draft-only');
+const draftOnly = selection.draftOnly;
+let processes;
+let cleanup;
+const budget = createSmokeBudget({ maxMs: selection.budgetMs,
+  onExpire: () => processes.stopAll(new SmokeDeadlineExceeded()),
+});
+processes = createSmokeProcessRunner({ budget, spawn,
+  terminateTree(pid) {
+    const result = spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', timeout: 5000 });
+    return result.status === 0 && !result.error && !result.signal;
+  },
+  isRunning(pid) {
+    try { process.kill(pid, 0); return true; }
+    catch (error) { return error.code === 'ESRCH' ? false : undefined; }
+  },
+});
 const preamble = 'This is an isolated synthetic test. Use only the installed harmonica-chat skill, its files, and the synthetic Harmonica MCP. Do not use network, shell, other servers, or subagents. In this non-interactive harness, present a question in text and wait if the native question tool is unavailable. Do not invent user replies.';
 function readAuth(path) {
   try { return JSON.parse(readFileSync(path, 'utf8')); }
   catch { return null; } // Never print a potentially secret-bearing parser error.
 }
 function run(command, args, cwd, env, input) {
-  return new Promise((done) => {
-    const child = spawn(command, args, { cwd, env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-    child.stdin.on('error', () => {});
-    child.stdin.end(input);
-    active.add(child.pid);
-    let text = '';
-    child.stdout.on('data', b => { text += b; });
-    child.stderr.on('data', b => { text += b; });
-    const timer = setTimeout(() => {
-      spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
-    }, 120000);
-    child.on('error', () => { clearTimeout(timer); active.delete(child.pid); done({ code: -1, text: '' }); });
-    child.on('close', code => { clearTimeout(timer); active.delete(child.pid); done({ code, text }); });
-  });
+  return processes.run(command, args, cwd, env, input);
 }
 function calls(audit) {
   return existsSync(audit) ? readFileSync(audit, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse) : [];
 }
 try {
-  for (const harness of (process.argv[2] ? [process.argv[2]] : ['claude', 'opencode'])) {
+  for (const harness of [selection.harness]) {
     const home = join(root, harness, 'home');
     mkdirSync(home, { recursive: true });
     const env = { ...process.env, HOME: home, USERPROFILE: home,
@@ -80,7 +85,7 @@ try {
         continue;
       }
     }
-    for (const scenario of (process.argv[3] ? [process.argv[3]] : ['browser', 'recovery', 'ready'])) {
+    for (const scenario of [selection.scenario]) {
       const cwd = join(root, harness, scenario);
       mkdirSync(cwd, { recursive: true });
       const plugin = join(cwd, 'fixture-plugin');
@@ -151,18 +156,17 @@ try {
       const skillCalls = tools.filter(t => t.name?.toLowerCase() === 'skill');
       const nativeSkillInvocationSucceeded = skillCalls.some(t => toolResults.some(r => r.tool_use_id === t.id && !r.is_error));
       const fingerprinted = seen.length > 0 && seen.every(c => c.args.client === 'harmonica-chat' && c.args.client_version === '3.5.0');
-      const consentHeld = !firstCalls.some(c => c.name === 'create_session');
+      const oracle = evaluateOnboardingCalls({ scenario, firstCalls, seen, draftOnly });
+      const consentHeld = oracle.consentHeld;
       const draftText = harness === 'opencode' ? syntheticReply(events) : last?.result ?? '';
       const promptDisplayed = /^#{1,6}\s+Facilitation prompt/im.test(draftText);
-      const passed = first.code === 0 && fingerprinted && consentHeld && (scenario !== 'ready' || !promptDisplayed) && (scenario === 'browser'
-        ? names.includes('continue_onboarding') && creates.length === 0
-        : scenario === 'recovery' ? creates.length === 0 && names.includes('get_session')
-        : draftOnly ? names.includes('list_templates') && !promptDisplayed
-        : second?.code === 0 && creates.length === 1 && creates[0].args.onboarding_flow_id === flow
-          && names.indexOf('list_templates') >= 0 && names.indexOf('list_templates') < names.indexOf('create_session')
-          && names.includes('get_session'));
+      const passed = first.code === 0 && fingerprinted && oracle.workflowPassed
+        && (scenario !== 'ready' || !promptDisplayed)
+        && (scenario !== 'ready' || draftOnly || second?.code === 0);
+      budget.remainingMs(); // Parsing/scoring cannot turn an expired run into a pass.
       results.push({ harness, scenario, firstExit: first.code, secondExit: second?.code ?? null,
         passed, scope: draftOnly ? 'draft_only' : 'workflow', calls: names, allFingerprinted: fingerprinted, noCreationBeforeConfirmation: consentHeld, promptDisplayed,
+        terminalRoutingCorrect: oracle.terminalRouting, exactRecoveryTarget: oracle.exactRecoveryTarget,
         fingerprintArguments: seen.map(c => ({ operation: c.name, fields: Object.keys(c.args), clientMatches: c.args.client === 'harmonica-chat', version: /^\d+\.\d+\.\d+$/.test(c.args.client_version ?? '') ? c.args.client_version : null })),
         builtInTools: tools.map(t => t.name), skillInvoked: skillCalls.length > 0,
         ...(harness === 'opencode' && !passed ? { eventShapes: eventShapes(events), secondEventShapes: eventShapes(secondEvents),
@@ -189,10 +193,21 @@ try {
       if (!passed) break;
     }
   }
+} catch (error) {
+  const blocked = error instanceof SmokeDeadlineExceeded || error instanceof SmokeProcessTimeout
+    ? error.message : 'Runner failed; no further subprocess is allowed.';
+  results.push({ harness: selection.harness, scenario: selection.scenario, blocked });
 } finally {
-  for (const pid of active) spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
-  // Task-owned directory only; credentials and transcripts never persist in repo.
-  rmSync(root, { recursive: true, force: true });
+  budget.close();
+  processes.stopAll(new Error('Runner cleanup stopped further subprocesses.'));
+  const report = processes.cleanupReport();
+  // Never delete an unconfirmed process tree's potentially active profile.
+  cleanup = cleanupSmokeProfile({ report,
+    remove: () => rmSync(root, { recursive: true, force: true }), exists: () => existsSync(root),
+  });
+  if (cleanup.cleanupFailed) results.push({ blocked: 'Cleanup incomplete; process/profile requires explicit follow-up. Keep the retained profile private; it may contain credentials.',
+    unconfirmedProcessIds: report.unconfirmedProcessIds, unknownProcessCount: report.unknownProcessCount, temporaryProfilePath: root,
+  });
 }
-console.log(JSON.stringify({ results, temporaryProfileRemoved: !existsSync(root) }, null, 2));
+console.log(JSON.stringify({ results, wholeRunBudgetMs: selection.budgetMs, ...cleanup }, null, 2));
 if (results.some(r => r.blocked || !r.passed)) process.exitCode = 1;
