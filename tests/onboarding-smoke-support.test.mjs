@@ -70,9 +70,9 @@ test('the monotonic whole-run deadline shares remaining time across all subproce
 test('runner wires deadline checks before spawning, bounded kills, and final cleanup', () => {
   const source = readFileSync(new URL('./run-onboarding-smoke.mjs', import.meta.url), 'utf8');
   assert.ok(source.indexOf('parseSmokeArgs(process.argv.slice(2))') < source.indexOf('mkdtempSync(join('));
-  assert.match(source, /function run[\s\S]*?budget\.remainingMs\(\)[\s\S]*?spawn\(command/);
-  assert.match(source, /Math\.min\(120000, remaining\)/);
-  assert.match(source, /onExpire: stopActive/);
-  assert.match(source, /finally \{\s*budget\.close\(\);\s*stopActive\(\);/);
+  assert.match(source, /return processes\.run\(command, args, cwd, env, input\)/);
+  assert.match(source, /onExpire: \(\) => processes\.stopAll\(new SmokeDeadlineExceeded\(\)\)/);
+  assert.match(source, /finally \{\s*budget\.close\(\);\s*processes\.stopAll/);
+  assert.match(source, /cleanupSmokeProfile\(\{ report/);
   assert.match(source, /timeout: 5000/);
 });

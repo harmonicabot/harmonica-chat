@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { createSmokeBudget, evaluateOnboardingCalls, FIXTURE_FLOW, parseSmokeArgs, SmokeDeadlineExceeded } from './onboarding-smoke-support.mjs';
+import { cleanupSmokeProfile, createSmokeProcessRunner, SmokeProcessTimeout } from './onboarding-process-control.mjs';
 
 // Validate before profile creation or touching any existing authentication.
 const selection = parseSmokeArgs(process.argv.slice(2));
@@ -15,37 +16,29 @@ const realHome = process.env.USERPROFILE;
 const root = mkdtempSync(join(process.env.LOCALAPPDATA, 'Temp', 'opencode', 'onboarding-smoke-'));
 const flow = FIXTURE_FLOW;
 const results = [];
-const active = new Set();
 const draftOnly = selection.draftOnly;
-function stopActive() {
-  for (const pid of active) spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', timeout: 5000 });
-}
-const budget = createSmokeBudget({ maxMs: selection.budgetMs, onExpire: stopActive });
+let processes;
+let cleanup;
+const budget = createSmokeBudget({ maxMs: selection.budgetMs,
+  onExpire: () => processes.stopAll(new SmokeDeadlineExceeded()),
+});
+processes = createSmokeProcessRunner({ budget, spawn,
+  terminateTree(pid) {
+    const result = spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', timeout: 5000 });
+    return result.status === 0 && !result.error && !result.signal;
+  },
+  isRunning(pid) {
+    try { process.kill(pid, 0); return true; }
+    catch (error) { return error.code === 'ESRCH' ? false : undefined; }
+  },
+});
 const preamble = 'This is an isolated synthetic test. Use only the installed harmonica-chat skill, its files, and the synthetic Harmonica MCP. Do not use network, shell, other servers, or subagents. In this non-interactive harness, present a question in text and wait if the native question tool is unavailable. Do not invent user replies.';
 function readAuth(path) {
   try { return JSON.parse(readFileSync(path, 'utf8')); }
   catch { return null; } // Never print a potentially secret-bearing parser error.
 }
 function run(command, args, cwd, env, input) {
-  const remaining = budget.remainingMs();
-  return new Promise((done, reject) => {
-    const child = spawn(command, args, { cwd, env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-    child.stdin.on('error', () => {});
-    child.stdin.end(input);
-    active.add(child.pid);
-    let text = '';
-    child.stdout.on('data', b => { text += b; });
-    child.stderr.on('data', b => { text += b; });
-    const timer = setTimeout(() => {
-      spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', timeout: 5000 });
-    }, Math.min(120000, remaining));
-    child.on('error', () => { clearTimeout(timer); active.delete(child.pid); done({ code: -1, text: '' }); });
-    child.on('close', code => {
-      clearTimeout(timer); active.delete(child.pid);
-      try { budget.remainingMs(); done({ code, text }); }
-      catch (error) { reject(error); }
-    });
-  });
+  return processes.run(command, args, cwd, env, input);
 }
 function calls(audit) {
   return existsSync(audit) ? readFileSync(audit, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse) : [];
@@ -201,13 +194,20 @@ try {
     }
   }
 } catch (error) {
-  if (!(error instanceof SmokeDeadlineExceeded)) throw error;
-  results.push({ harness: selection.harness, scenario: selection.scenario, blocked: error.message });
+  const blocked = error instanceof SmokeDeadlineExceeded || error instanceof SmokeProcessTimeout
+    ? error.message : 'Runner failed; no further subprocess is allowed.';
+  results.push({ harness: selection.harness, scenario: selection.scenario, blocked });
 } finally {
   budget.close();
-  stopActive();
-  // Task-owned directory only; credentials and transcripts never persist in repo.
-  rmSync(root, { recursive: true, force: true });
+  processes.stopAll(new Error('Runner cleanup stopped further subprocesses.'));
+  const report = processes.cleanupReport();
+  // Never delete an unconfirmed process tree's potentially active profile.
+  cleanup = cleanupSmokeProfile({ report,
+    remove: () => rmSync(root, { recursive: true, force: true }), exists: () => existsSync(root),
+  });
+  if (cleanup.cleanupFailed) results.push({ blocked: 'Cleanup incomplete; process/profile requires explicit follow-up. Keep the retained profile private; it may contain credentials.',
+    unconfirmedProcessIds: report.unconfirmedProcessIds, unknownProcessCount: report.unknownProcessCount, temporaryProfilePath: root,
+  });
 }
-console.log(JSON.stringify({ results, wholeRunBudgetMs: selection.budgetMs, temporaryProfileRemoved: !existsSync(root) }, null, 2));
+console.log(JSON.stringify({ results, wholeRunBudgetMs: selection.budgetMs, ...cleanup }, null, 2));
 if (results.some(r => r.blocked || !r.passed)) process.exitCode = 1;
