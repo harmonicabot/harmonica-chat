@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { createSmokeBudget, evaluateOnboardingCalls, FIXTURE_FLOW, parseSmokeArgs, SmokeDeadlineExceeded } from './onboarding-smoke-support.mjs';
 import { cleanupSmokeProfile, createSmokeProcessRunner, SmokeProcessTimeout } from './onboarding-process-control.mjs';
+import { claudeSmokeLoopArgs, createSmokeInputRunner, SMOKE_LOOP_LIMITS, SmokeInputBlocked, successfulSmokeInput, withOpenCodeSmokeLoopLimit } from './onboarding-smoke-limits.mjs';
 
 // Validate before profile creation or touching any existing authentication.
 const selection = parseSmokeArgs(process.argv.slice(2));
@@ -40,6 +41,8 @@ function readAuth(path) {
 function run(command, args, cwd, env, input) {
   return processes.run(command, args, cwd, env, input);
 }
+// Auth export/import use run directly; only actual user/model inputs consume this budget.
+const modelInputs = createSmokeInputRunner(run);
 function calls(audit) {
   return existsSync(audit) ? readFileSync(audit, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse) : [];
 }
@@ -106,29 +109,29 @@ try {
         writeFileSync(join(cwd, 'mcp.json'), JSON.stringify({ mcpServers: { harmonica: mcp } }));
         const cli = join(realHome, '.local', 'bin', 'claude.exe');
         const sessionId = randomUUID();
-        const args = ['--restricted', '--plugin-dir', plugin, '--strict-mcp-config', '--mcp-config', join(cwd, 'mcp.json'), '--setting-sources', 'project', '--tools', 'Read,Skill,AskUserQuestion', '--allowedTools', 'Read,Skill,mcp__harmonica__*', '--permission-mode', 'dontAsk', '--max-budget-usd', '1', '--output-format', 'stream-json', '--verbose', '--append-system-prompt', preamble];
-        first = await run(cli, [...args, '--session-id', sessionId, '-p', prompt], cwd, env);
+        const args = ['--restricted', '--plugin-dir', plugin, '--strict-mcp-config', '--mcp-config', join(cwd, 'mcp.json'), '--setting-sources', 'project', '--tools', 'Read,Skill,AskUserQuestion', '--allowedTools', 'Read,Skill,mcp__harmonica__*', '--permission-mode', 'dontAsk', '--max-budget-usd', '1', ...claudeSmokeLoopArgs(), '--output-format', 'stream-json', '--verbose', '--append-system-prompt', preamble];
+        first = await modelInputs.run(cli, [...args, '--session-id', sessionId, '-p', prompt], cwd, env);
         firstCalls = calls(audit);
-        if (scenario === 'ready' && !draftOnly && first.code === 0 && !firstCalls.some(c => c.name === 'create_session')) {
-          second = await run(cli, [...args, '--resume', sessionId, '-p', 'Yes, create the exact session design you just proposed with those settings. Do not send invitations.'], cwd, env);
+        if (scenario === 'ready' && !draftOnly && successfulSmokeInput(first) && !firstCalls.some(c => c.name === 'create_session')) {
+          second = await modelInputs.run(cli, [...args, '--resume', sessionId, '-p', 'Yes, create the exact session design you just proposed with those settings. Do not send invitations.'], cwd, env);
         }
       } else {
-        const config = { '$schema': 'https://opencode.ai/config.json', snapshots: false, plugins: [], skills: [],
+        const config = withOpenCodeSmokeLoopLimit({ '$schema': 'https://opencode.ai/config.json', snapshots: false, plugins: [], skills: [],
           mcp: { servers: { harmonica: { type: 'local', command: [mcp.command, ...mcp.args] } } },
           agents: { build: { system: preamble, permissions: [
             { action: '*', resource: '*', effect: 'deny' },
             ...['read', 'skill', 'glob', 'grep', 'execute', 'harmonica_*'].map(action => ({ action, resource: '*', effect: 'allow' })),
           ] } },
-        };
+        });
         writeFileSync(join(cwd, 'opencode.json'), JSON.stringify(config));
         const cli = join(realHome, 'AppData', 'Roaming', 'npm', 'opencode2.ps1');
         const args = ['-NoProfile', '-File', cli, 'run', '--standalone', '--format', 'json', '--model', 'openai/gpt-6.1-sol'];
-        first = await run('pwsh', [...args, prompt], cwd, env);
+        first = await modelInputs.run('pwsh', [...args, prompt], cwd, env);
         firstCalls = calls(audit);
-        if (scenario === 'ready' && !draftOnly && first.code === 0 && !firstCalls.some(c => c.name === 'create_session')) {
+        if (scenario === 'ready' && !draftOnly && successfulSmokeInput(first) && !firstCalls.some(c => c.name === 'create_session')) {
           const firstEvents = first.text.split('\n').flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } });
           const sessionId = firstEvents.find(e => /^ses_/.test(e.sessionID ?? ''))?.sessionID;
-          if (sessionId) second = await run('pwsh', [...args, '--session', sessionId, `Continue my Harmonica onboarding for flow ${flow}. Yes, create the exact session design you just proposed with those settings. Do not send invitations.`], cwd, env);
+          if (sessionId) second = await modelInputs.run('pwsh', [...args, '--session', sessionId, `Continue my Harmonica onboarding for flow ${flow}. Yes, create the exact session design you just proposed with those settings. Do not send invitations.`], cwd, env);
         }
       }
       const seen = calls(audit);
@@ -160,9 +163,9 @@ try {
       const consentHeld = oracle.consentHeld;
       const draftText = harness === 'opencode' ? syntheticReply(events) : last?.result ?? '';
       const promptDisplayed = /^#{1,6}\s+Facilitation prompt/im.test(draftText);
-      const passed = first.code === 0 && fingerprinted && oracle.workflowPassed
+      const passed = successfulSmokeInput(first) && fingerprinted && oracle.workflowPassed
         && (scenario !== 'ready' || !promptDisplayed)
-        && (scenario !== 'ready' || draftOnly || second?.code === 0);
+        && (scenario !== 'ready' || draftOnly || successfulSmokeInput(second));
       budget.remainingMs(); // Parsing/scoring cannot turn an expired run into a pass.
       results.push({ harness, scenario, firstExit: first.code, secondExit: second?.code ?? null,
         passed, scope: draftOnly ? 'draft_only' : 'workflow', calls: names, allFingerprinted: fingerprinted, noCreationBeforeConfirmation: consentHeld, promptDisplayed,
@@ -194,7 +197,7 @@ try {
     }
   }
 } catch (error) {
-  const blocked = error instanceof SmokeDeadlineExceeded || error instanceof SmokeProcessTimeout
+  const blocked = error instanceof SmokeDeadlineExceeded || error instanceof SmokeProcessTimeout || error instanceof SmokeInputBlocked
     ? error.message : 'Runner failed; no further subprocess is allowed.';
   results.push({ harness: selection.harness, scenario: selection.scenario, blocked });
 } finally {
@@ -209,5 +212,5 @@ try {
     unconfirmedProcessIds: report.unconfirmedProcessIds, unknownProcessCount: report.unknownProcessCount, temporaryProfilePath: root,
   });
 }
-console.log(JSON.stringify({ results, wholeRunBudgetMs: selection.budgetMs, ...cleanup }, null, 2));
+console.log(JSON.stringify({ results, wholeRunBudgetMs: selection.budgetMs, loopLimits: SMOKE_LOOP_LIMITS, ...modelInputs.summary(), ...cleanup }, null, 2));
 if (results.some(r => r.blocked || !r.passed)) process.exitCode = 1;
