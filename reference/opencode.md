@@ -2,6 +2,15 @@
 
 Use this adapter when running harmonica-chat inside OpenCode.
 
+New connections should use the hosted endpoint at
+`https://app.harmonica.chat/api/mcp/mcp`, with `type: "remote"`, `oauth: false`,
+and `Authorization: "Bearer {env:HARMONICA_API_KEY}"` in `headers`. Keep the key
+in OpenCode's launch environment. In OpenCode V2, put the entry under
+`mcp.servers.harmonica`; V1 uses `mcp.harmonica`. The README has the complete
+configuration and the V2 documentation link.
+Preserve working local npm connections for ordinary design/lifecycle operations;
+onboarding continuation requires the hosted tools.
+
 ## MCP Operations
 
 The Harmonica server is exposed under `tools.harmonica`. Translate the semantic operation names in

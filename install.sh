@@ -1,11 +1,11 @@
 #!/bin/bash
-# Install harmonica-chat for Claude Code (v3.1.0+: end-to-end install incl. MCP + permissions)
+# Install harmonica-chat for Claude Code (hosted MCP by default)
 
 set -e
 
-VERSION="3.1.0"
+VERSION="3.6.0"
 REPO_URL="https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master"
-CLAUDE_DIR="$HOME/.claude"
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 SKILL_DIR="$CLAUDE_DIR/skills/harmonica-chat"
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 REFERENCE_FILES=(
@@ -34,22 +34,7 @@ AUTO_APPROVE_TOOLS=(
 echo "harmonica-chat installer v$VERSION"
 echo ""
 
-# --- 1. Prereq: HARMONICA_API_KEY ---
-if [ -z "$HARMONICA_API_KEY" ]; then
-  echo "✗ HARMONICA_API_KEY is not set."
-  echo ""
-  echo "Get your key at https://app.harmonica.chat/profile (Profile > API Keys > Generate API Key)."
-  echo "Then re-run with the key set:"
-  echo "  HARMONICA_API_KEY=hm_live_... bash <(curl -fsSL $REPO_URL/install.sh)"
-  exit 1
-fi
-case "$HARMONICA_API_KEY" in
-  hm_live_*) ;;
-  *) echo "✗ HARMONICA_API_KEY doesn't look like a Harmonica key (expected hm_live_...)."; exit 1 ;;
-esac
-echo "✓ HARMONICA_API_KEY detected"
-
-# --- 2. Prereq: claude CLI ---
+# --- 1. Prereq: claude CLI ---
 if ! command -v claude >/dev/null 2>&1; then
   echo "✗ claude CLI not found on PATH."
   echo ""
@@ -59,29 +44,42 @@ if ! command -v claude >/dev/null 2>&1; then
 fi
 echo "✓ claude CLI found ($(claude --version 2>/dev/null | head -1))"
 
-# --- 3. Prereq: node (for npx harmonica-mcp + settings.json merge) ---
+# --- 2. Prereq: node (for the settings.json merge, not a local MCP server) ---
 if ! command -v node >/dev/null 2>&1; then
   echo "✗ node not found on PATH."
   echo ""
-  echo "harmonica-chat needs Node.js to run the harmonica-mcp server via npx."
-  echo "Install Node.js (≥18) from https://nodejs.org, then re-run."
+  echo "The installer uses Node.js to update Claude Code's read-only tool permissions."
+  echo "Install Node.js from https://nodejs.org, then re-run."
   exit 1
 fi
 echo "✓ node found ($(node --version))"
 
-# --- 4. Configure harmonica-mcp ---
-if claude mcp list 2>/dev/null | grep -q "^harmonica"; then
-  echo "✓ harmonica MCP already configured (skipping add-json)"
+# --- 3. Configure hosted MCP only when no exact registration exists ---
+if claude mcp get harmonica >/dev/null 2>&1; then
+  echo "✓ harmonica MCP already configured (preserving the existing connection)"
 else
-  MCP_JSON=$(cat <<JSON
-{"command":"npx","args":["-y","harmonica-mcp"],"env":{"HARMONICA_API_KEY":"$HARMONICA_API_KEY"}}
+  if [ -z "$HARMONICA_API_KEY" ]; then
+    echo "✗ HARMONICA_API_KEY is not set."
+    echo "Get your key at https://app.harmonica.chat/profile (Profile > API Keys > Generate API Key)."
+    echo "Export it in the shell you use to start Claude Code, then re-run:"
+    echo "  export HARMONICA_API_KEY=hm_live_..."
+    exit 1
+  fi
+  case "$HARMONICA_API_KEY" in
+    hm_live_*) ;;
+    *) echo "✗ HARMONICA_API_KEY doesn't look like a Harmonica key (expected hm_live_...)."; exit 1 ;;
+  esac
+  # Keep the literal reference: Claude Code resolves it from its launch environment.
+  # Never pass the key itself in CLI arguments or print it on a failed registration.
+  MCP_JSON=$(cat <<'JSON'
+{"type":"http","url":"https://app.harmonica.chat/api/mcp/mcp","headers":{"Authorization":"Bearer ${HARMONICA_API_KEY}"}}
 JSON
 )
   if claude mcp add-json harmonica "$MCP_JSON" -s user >/dev/null 2>&1; then
-    echo "✓ Configured harmonica MCP server (-s user)"
+    echo "✓ Configured hosted Harmonica MCP (-s user)"
+    echo "Keep HARMONICA_API_KEY exported when starting Claude Code."
   else
-    echo "✗ Failed to configure harmonica MCP. Run manually:"
-    echo "  claude mcp add-json harmonica '$MCP_JSON' -s user"
+    echo "✗ Failed to register hosted Harmonica MCP. Check Claude Code's MCP configuration and retry."
     exit 1
   fi
 fi
@@ -107,7 +105,7 @@ node -e "
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const claudeDir = path.join(os.homedir(), '.claude');
+const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 const p = path.join(claudeDir, 'settings.json');
 fs.mkdirSync(claudeDir, { recursive: true });
 const tools = $TOOLS_JSON;
@@ -134,10 +132,10 @@ if [ -f "$LEGACY_CMD" ]; then
 fi
 
 # --- 8. Verify MCP registration ---
-if claude mcp list 2>/dev/null | grep -q "^harmonica"; then
+if claude mcp get harmonica >/dev/null 2>&1; then
   echo "✓ harmonica MCP registered"
 else
-  echo "⚠ Could not verify harmonica MCP registration (claude mcp list didn't show it)"
+  echo "⚠ Could not verify harmonica MCP registration (claude mcp get harmonica failed)"
 fi
 
 echo ""
