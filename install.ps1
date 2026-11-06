@@ -1,10 +1,10 @@
-# Install harmonica-chat for Claude Code (v3.1.0+: end-to-end install incl. MCP + permissions)
+# Install harmonica-chat for Claude Code (hosted MCP by default)
 
 $ErrorActionPreference = "Stop"
 
-$Version = "3.1.0"
+$Version = "3.6.0"
 $RepoUrl = "https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master"
-$ClaudeDir = "$env:USERPROFILE\.claude"
+$ClaudeDir = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { "$env:USERPROFILE\.claude" }
 $SkillDir = "$ClaudeDir\skills\harmonica-chat"
 $SettingsFile = "$ClaudeDir\settings.json"
 $ReferenceFiles = @(
@@ -24,22 +24,7 @@ $AutoApproveTools = @(
 Write-Host "harmonica-chat installer v$Version"
 Write-Host ""
 
-# --- 1. Prereq: HARMONICA_API_KEY ---
-if (-not $env:HARMONICA_API_KEY) {
-  Write-Host "X HARMONICA_API_KEY is not set."
-  Write-Host ""
-  Write-Host "Get your key at https://app.harmonica.chat/profile (Profile > API Keys > Generate API Key)."
-  Write-Host "Then re-run with the key set:"
-  Write-Host "  `$env:HARMONICA_API_KEY = 'hm_live_...'; irm $RepoUrl/install.ps1 | iex"
-  exit 1
-}
-if (-not $env:HARMONICA_API_KEY.StartsWith("hm_live_")) {
-  Write-Host "X HARMONICA_API_KEY doesn't look like a Harmonica key (expected hm_live_...)."
-  exit 1
-}
-Write-Host "OK HARMONICA_API_KEY detected"
-
-# --- 2. Prereq: claude CLI ---
+# --- 1. Prereq: claude CLI ---
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
   Write-Host "X claude CLI not found on PATH."
   Write-Host ""
@@ -50,33 +35,52 @@ if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
 $ClaudeVersion = (& claude --version 2>$null | Select-Object -First 1)
 Write-Host "OK claude CLI found ($ClaudeVersion)"
 
-# --- 3. Prereq: node ---
+# --- 2. Prereq: node (for the settings.json merge, not a local MCP server) ---
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
   Write-Host "X node not found on PATH."
   Write-Host ""
-  Write-Host "harmonica-chat needs Node.js to run the harmonica-mcp server via npx."
-  Write-Host "Install Node.js (>=18) from https://nodejs.org, then re-run."
+  Write-Host "The installer uses Node.js to update Claude Code's read-only tool permissions."
+  Write-Host "Install Node.js from https://nodejs.org, then re-run."
   exit 1
 }
 $NodeVersion = (& node --version)
 Write-Host "OK node found ($NodeVersion)"
 
-# --- 4. Configure harmonica-mcp ---
-$McpList = & claude mcp list 2>$null
-if ($McpList -match "^harmonica") {
-  Write-Host "OK harmonica MCP already configured (skipping add-json)"
+# --- 3. Configure hosted MCP only when no exact registration exists ---
+$McpExists = $false
+try {
+  & claude mcp get harmonica *> $null
+  $McpExists = ($LASTEXITCODE -eq 0)
+} catch {
+  # Missing registrations may throw on native stderr in Windows PowerShell 5.1.
+  $McpExists = $false
+}
+if ($McpExists) {
+  Write-Host "OK harmonica MCP already configured (preserving the existing connection)"
 } else {
+  if (-not $env:HARMONICA_API_KEY) {
+    Write-Host "X HARMONICA_API_KEY is not set."
+    Write-Host "Get your key at https://app.harmonica.chat/profile (Profile > API Keys > Generate API Key)."
+    Write-Host "Set it in the PowerShell session you use to start Claude Code, then re-run:"
+    Write-Host "  `$env:HARMONICA_API_KEY = 'hm_live_...'"
+    exit 1
+  }
+  if (-not $env:HARMONICA_API_KEY.StartsWith("hm_live_")) {
+    Write-Host "X HARMONICA_API_KEY doesn't look like a Harmonica key (expected hm_live_...)."
+    exit 1
+  }
   $McpConfig = @{
-    command = "npx"
-    args = @("-y", "harmonica-mcp")
-    env = @{ HARMONICA_API_KEY = $env:HARMONICA_API_KEY }
+    type = "http"
+    url = "https://app.harmonica.chat/api/mcp/mcp"
+    headers = @{ Authorization = 'Bearer ${HARMONICA_API_KEY}' }
   } | ConvertTo-Json -Compress
   try {
     & claude mcp add-json harmonica $McpConfig -s user *> $null
-    Write-Host "OK Configured harmonica MCP server (-s user)"
+    if ($LASTEXITCODE -ne 0) { throw "MCP registration failed." }
+    Write-Host "OK Configured hosted Harmonica MCP (-s user)"
+    Write-Host "Keep HARMONICA_API_KEY set when starting Claude Code."
   } catch {
-    Write-Host "X Failed to configure harmonica MCP. Run manually:"
-    Write-Host "  claude mcp add-json harmonica '$McpConfig' -s user"
+    Write-Host "X Failed to register hosted Harmonica MCP. Check Claude Code's MCP configuration and retry."
     exit 1
   }
 }
@@ -101,7 +105,7 @@ $NodeScript = @"
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const claudeDir = path.join(os.homedir(), '.claude');
+const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 const p = path.join(claudeDir, 'settings.json');
 fs.mkdirSync(claudeDir, { recursive: true });
 const tools = [$ToolsJson];
@@ -129,11 +133,17 @@ if (Test-Path $LegacyCmd) {
 }
 
 # --- 8. Verify MCP registration ---
-$McpListAfter = & claude mcp list 2>$null
-if ($McpListAfter -match "^harmonica") {
+$McpRegistered = $false
+try {
+  & claude mcp get harmonica *> $null
+  $McpRegistered = ($LASTEXITCODE -eq 0)
+} catch {
+  $McpRegistered = $false
+}
+if ($McpRegistered) {
   Write-Host "OK harmonica MCP registered"
 } else {
-  Write-Host "! Could not verify harmonica MCP registration (claude mcp list didn't show it)"
+  Write-Host "! Could not verify harmonica MCP registration (claude mcp get harmonica failed)"
 }
 
 Write-Host ""

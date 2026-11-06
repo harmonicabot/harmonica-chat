@@ -4,7 +4,7 @@ description: Design, create, and manage Harmonica deliberation sessions. Use whe
 allowed-tools: mcp__harmonica__*, AskUserQuestion, Read, Bash(git:*), Bash(echo:*), Bash(curl:*)
 ---
 
-<!-- harmonica-chat v3.5.0 -->
+<!-- harmonica-chat v3.6.0 -->
 
 # Harmonica — Session Companion
 
@@ -114,9 +114,9 @@ If the fetch fails (network error, timeout), skip silently and proceed — don't
 
 ### MCP Check (ordinary design and lifecycle paths)
 
-Onboarding requests follow onboarding.md's hosted-only recovery instead of the legacy installer below, including when a connection is absent or fails.
+Onboarding requests follow onboarding.md's hosted-only recovery instead of the ordinary installer below, including when a connection is absent or fails.
 
-Check if harmonica-mcp is available by attempting to call the `list_sessions` operation with
+Check if the Harmonica MCP connection is available by attempting to call the `list_sessions` operation with
 `limit: 1` and the skill fingerprint, using the active harness's namespace from the table above.
 
 If the tool responds successfully, proceed.
@@ -126,12 +126,13 @@ If the tool is not available (tool not found, connection error, or similar failu
 > **Harmonica MCP server not found.** The fastest way to fix this:
 >
 > ```
-> HARMONICA_API_KEY=hm_live_... bash <(curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh)
+> export HARMONICA_API_KEY=hm_live_...
+> bash <(curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh)
 > ```
 >
-> (Get an API key at https://app.harmonica.chat/profile if you don't have one. Then restart the active agent.)
+> (Get an API key at https://app.harmonica.chat/profile if you don't have one. New installs use hosted MCP; keep the key in the environment that launches your agent. Existing local registrations are preserved. Other harnesses use the hosted setup in the README.)
 
-Then STOP. Do not proceed with any other step until harmonica-mcp is available and responding.
+Then STOP. Do not proceed with any other step until the Harmonica MCP connection is available and responding.
 
 ## Tool Routing
 
@@ -139,7 +140,7 @@ When multiple paths could accomplish the same job, choose the one that preserves
 
 - **harmonica-mcp operations** — canonical path for ALL session operations: list, search, get, get_responses, get_summary, create, update, chat_message, list_telegram_groups. Resolve the operation name through the active harness namespace. Always prefer over raw HTTP.
 - **Raw `curl`** — only for endpoints harmonica-mcp doesn't wrap. Currently the sole legitimate case is the community-admin participation feed in [reference/invitation.md](reference/invitation.md) Step 3 (the community-admin service is intentionally separate from the Harmonica API). Don't use `curl` to hit Harmonica's own API — use the MCP.
-- **Direct database access** (Neon MCP, etc.) — **never**. The Harmonica DB has internal invariants enforced through the API; bypassing them via direct SQL produces broken sessions. If the data you need isn't exposed by harmonica-mcp, file an issue against [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) rather than reaching for the DB.
+- **Direct database access** (Neon MCP, etc.) — **never**. The Harmonica DB has internal invariants enforced through the API; bypassing them via direct SQL produces broken sessions. Request missing MCP capabilities in [Pro](https://github.com/harmonicabot/harmonica-web-app-pro); use the [standalone repo](https://github.com/harmonicabot/harmonica-mcp) for local adapter compatibility issues.
 - **Other MCPs** (Zapier, Slack, Discord, Linear, etc.) — used at-runtime by [reference/invitation.md](reference/invitation.md) for distribution, IF the user has them configured and pre-approved. If they're not in the user's `~/.claude/settings.json` `permissions.allow`, those calls will prompt — that's expected.
 
 ## Commands

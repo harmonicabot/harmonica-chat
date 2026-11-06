@@ -6,7 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 harmonica-chat is a Claude Code skill (`/harmonica-chat`) that designs, creates, and manages [Harmonica](https://harmonica.chat) deliberation sessions. It's distributed as a thin entry router (`SKILL.md`) plus lazy-loaded reference files (`reference/*.md`) that users install to `~/.claude/skills/harmonica-chat/`.
 
-The skill requires the [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) server for API access.
+The skill uses Harmonica MCP for API access. New installs default to Pro's hosted
+endpoint, `https://app.harmonica.chat/api/mcp/mcp`. The
+[harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) npm package remains
+a maintenance-only compatibility option for stdio and self-hosted REST APIs.
+Preserve existing registrations when updating the skill; do not silently migrate
+them. Installers store an environment-variable reference for new hosted
+connections, so the key must remain in the environment that launches the agent.
 
 ## Repository Structure
 
@@ -29,7 +35,7 @@ Triggers when the user invokes `/harmonica-chat` or asks Claude Code to do somet
 
 The entry router (`SKILL.md`):
 1. Checks the skill version against GitHub and notifies if an update is available
-2. Verifies harmonica-mcp is installed (blocks until it is)
+2. Verifies the Harmonica MCP connection responds (blocks until it does)
 3. Surfaces shared Session Design Laws that apply to all subcommands
 4. Routes `$ARGUMENTS` to the matching reference file:
    - empty → `reference/design.md`
@@ -56,7 +62,13 @@ After session creation (design / accelerated / follow-up / onboarding), the agen
 
 ## Development Workflow
 
-No build step or linter. `node --test tests/onboarding.test.mjs tests/onboarding-fixture.test.mjs` checks onboarding route/install integrity and synthetic fixture behavior; it is not a substitute for fresh-profile Claude Code and OpenCode behavior checks.
+No build step or linter. `node --test tests/*.test.mjs` runs the offline suite,
+including bash installer behavior against an isolated `CLAUDE_CONFIG_DIR` with
+CLI/download fixtures. It checks hosted registration, existing-connection
+preservation and secret-safe failures without modifying the user's live setup.
+The Bash installer tests require POSIX and are skipped on native Windows.
+It is not a substitute for PowerShell execution or fresh-profile Claude Code and
+OpenCode behavior checks. `bash -n install.sh` checks bash syntax.
 
 **Manual paid smoke (Windows):** An explicit single case is required, for example `node tests/run-onboarding-smoke.mjs claude browser --budget-ms=120000`. Bare invocation and invalid selectors fail before profile creation or authentication reads. Obtain explicit model-usage approval immediately before each run. The default/maximum execution budget is five minutes, shared by authentication export/import and every agent turn; each child is additionally capped at two minutes or the remaining total time. Expiry independently rejects the awaited operation without needing child close, refuses further subprocesses, and attempts one process-tree termination with up to five seconds of OS cleanup grace. A bounded root-kill fallback and PID probe do not pretend to prove descendants stopped if tree termination failed. Unconfirmed processes are detached from the runner's wait, their PID/profile is reported for explicit follow-up, and that profile is **not deleted**. Cleanup failure blocks the run; no automatic retry or shared-service restart follows. Wall time is not a dollar/token/quota cap, and does not authorize another smoke. The runner reuses existing, unexpired OAuth identities only, never refreshes them, and removes profiles only when cleanup is confirmed safe. This is fixture-backed agent evidence, not production or a real hosted-contract pass.
 Offline oracles require terminal `browser_required` routing with no extra design calls, exact-session recovery, and one post-confirmation create followed by a new continuation before recovery. `node --test tests/onboarding-fixture.test.mjs tests/onboarding-smoke-support.test.mjs` checks only these fixture/control paths without launching agents, reading credentials or installing packages.
@@ -68,7 +80,7 @@ For OpenCode V2, inspect the consumer with `auth list`; current credentials live
 Classify failures from the actual error/final reply, not keyword matches over the whole trace (which contains skill instructions). Preserve the session ID for confirmation turns; report missing tool visibility on resume as an unresolved harness/runtime question, not proof that the hosted Harmonica tool is absent. `--draft-only` limits a ready-flow diagnostic to the proposal/confirmation boundary.
 
 **To test changes**: Run the install script (`bash install.sh`) to copy local SKILL.md + reference/ to `~/.claude/skills/harmonica-chat/`. Then invoke `/harmonica-chat` in Claude Code. The post-commit hook (if configured) does this automatically on commit.
-Do not run the legacy installer to test the hosted onboarding recipe: it configures the local npm MCP server and modifies the user's global Claude settings. Use an isolated clean harness profile and the hosted endpoint instead, with explicit authorization for any shared-service restart or credential operation.
+Do not run the installer against the user's live profile to test onboarding: it modifies Claude settings and skill files. Use an isolated clean harness profile and the hosted endpoint instead, with explicit authorization for any shared-service restart or credential operation.
 
 **To release**: Merge the reviewed PR into `master`. Users with auto-update enabled will be notified on their next guided design run. Update the version comment in SKILL.md when making functional changes. Use semver:
 - Patch (v3.0.X) — typo fixes, small clarifications, no behavior change

@@ -15,15 +15,20 @@ Unlike a one-shot session creator, harmonica-chat is a guided designer — it wa
 
 - A Harmonica account — [sign up free](https://app.harmonica.chat) if you don't have one.
 - An API key — generate at [Profile > API Keys](https://app.harmonica.chat/profile). You'll get a `hm_live_...` value.
-- [Node.js](https://nodejs.org) ≥18 on PATH (needed to run [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) via npx).
-- [Claude Code](https://claude.ai/code) on PATH (for the v3.1 installer; manual install works without it).
+- [Node.js](https://nodejs.org) on PATH for the installer's permissions update. Hosted MCP does not require a local MCP process.
+- [Claude Code](https://claude.ai/code) on PATH for the installer; manual installation works with other agents.
 
 ## Installation
+
+New installations use the hosted MCP endpoint in Harmonica Pro:
+`https://app.harmonica.chat/api/mcp/mcp`. Existing `harmonica` registrations are
+preserved, including local npm and self-hosted connections.
 
 ### Quick install — bash (macOS / Linux / Git Bash on Windows)
 
 ```bash
-HARMONICA_API_KEY=hm_live_... bash <(curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh)
+export HARMONICA_API_KEY=hm_live_...
+bash <(curl -fsSL https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install.sh)
 ```
 
 ### Quick install — PowerShell (Windows)
@@ -35,21 +40,45 @@ irm https://raw.githubusercontent.com/harmonicabot/harmonica-chat/master/install
 
 ### What the installer does
 
-1. Verifies `HARMONICA_API_KEY` is set, `claude` CLI is on PATH, `node` is available.
-2. Configures the `harmonica` MCP server in Claude Code (`claude mcp add-json harmonica … -s user`) with your key — idempotent; skips if already configured.
+1. Verifies the `claude` CLI and `node` are available. A key is required only when creating a new MCP registration.
+2. Registers hosted HTTP MCP in Claude Code's user scope, with `Authorization` set to the literal `Bearer ${HARMONICA_API_KEY}` reference. An existing registration is left unchanged; the key is never passed as a CLI argument or printed on failure.
 3. Installs `SKILL.md` + 12 `reference/*.md` files to `~/.claude/skills/harmonica-chat/`.
 4. Pre-approves the 6 read-only `mcp__harmonica__*` tools (`list_sessions`, `search_sessions`, `get_session`, `get_responses`, `get_summary`, `list_telegram_groups`) by adding them to `~/.claude/settings.json` `permissions.allow` — fewer prompts during use; mutations (`create_session`, `update_session`) still require confirmation.
 5. Removes the legacy v2.x slash-command install at `~/.claude/commands/harmonica-chat.md` if present.
 6. Verifies the MCP is registered.
 
-Then restart Claude Code and you're done — invoke `/harmonica-chat`, or just describe what you want to facilitate.
+Keep `HARMONICA_API_KEY` available in the environment that launches Claude Code,
+including after restarting it: the installer stores a reference, not the key.
+Both installers honor `CLAUDE_CONFIG_DIR` for a custom Claude Code profile.
+Restart Claude Code from that environment, check the connection with `/mcp`, then
+invoke `/harmonica-chat` or describe what you want to facilitate. Registration
+checks alone do not verify a live API connection.
 
 ### OpenCode installation
 
 OpenCode can use the shared skill files directly. Copy `SKILL.md`, `reference/`, and
-`reference/opencode.md` into the OpenCode skills directory, configure the `harmonica-mcp` server in
-OpenCode's MCP settings with `npx -y harmonica-mcp`, and reload the MCP connection. The skill uses
-`tools.harmonica.<operation>` for Harmonica calls.
+`reference/opencode.md` into the OpenCode skills directory, configure hosted MCP in
+OpenCode V2's settings under `mcp.servers`, and reload the connection:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "harmonica": {
+        "type": "remote",
+        "url": "https://app.harmonica.chat/api/mcp/mcp",
+        "oauth": false,
+        "headers": { "Authorization": "Bearer {env:HARMONICA_API_KEY}" }
+      }
+    }
+  }
+}
+```
+
+Start OpenCode with `HARMONICA_API_KEY` in its environment. This example uses
+the [OpenCode V2 configuration format](https://opencode.ai/v2/docs/mcp-servers/).
+V1 places `harmonica` directly under `mcp` instead. The skill uses
+`tools.harmonica.<operation>` for Harmonica calls through Code Mode.
 
 ### Continue onboarding through hosted MCP (Claude Code or OpenCode)
 
@@ -57,19 +86,28 @@ If the Harmonica welcome journey offers AI-assistant access, use its **dedicated
 
 Use the onboarding screen's harness-specific recipe rather than pasting a key into chat, a repository file, a URL, or a command-line argument. Keep the bearer in your local environment and the harness configuration as an environment-variable reference; reload the harness after installation. With this skill installed, ask: `Continue my Harmonica onboarding for flow <flow-id>` (use the flow ID shown in the browser). The skill calls `continue_onboarding`, guides you back to `/welcome` if browser steps remain, and asks for confirmation before creating your first session from the saved handoff. If a creation response was lost, it returns the already attributed session rather than creating another.
 
-**Existing local-npm users:** the ordinary session-design commands and the installers above still work with `harmonica-mcp`. The onboarding flow specifically requires the hosted endpoint; do not substitute local npm MCP for it or switch a working local setup silently. The onboarding UI/flag is a separate future release; this skill update only provides the continuation route when a host already has a compatible saved flow.
+**Existing local-npm users:** ordinary session-design commands still work with `harmonica-mcp`, and the installers preserve that connection. The onboarding flow specifically requires the hosted endpoint; do not substitute local npm MCP for it or switch a working local setup silently. The onboarding UI/flag is a separate future release; this skill update only provides the continuation route when a host already has a compatible saved flow.
 
 ### Manual installation
 
 If you can't run the script or are installing for a non-Claude-Code agent:
 
-1. Configure the MCP server:
+1. Load `HARMONICA_API_KEY` into the environment that starts your agent, then configure hosted MCP. For Claude Code in bash:
    ```bash
-   claude mcp add-json harmonica '{"command":"npx","args":["-y","harmonica-mcp"],"env":{"HARMONICA_API_KEY":"hm_live_..."}}' -s user
+   claude mcp add-json harmonica '{"type":"http","url":"https://app.harmonica.chat/api/mcp/mcp","headers":{"Authorization":"Bearer ${HARMONICA_API_KEY}"}}' -s user
    ```
    (or the equivalent for your agent — see its docs for MCP configuration.)
 2. Copy `SKILL.md` and the `reference/` directory to your agent's skills location (Claude Code: `~/.claude/skills/harmonica-chat/`).
 3. Restart your agent.
+
+### Local stdio and self-hosted compatibility
+
+Use [harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp) when your client
+requires stdio or you connect to an OSS/self-hosted REST API. It requires Node.js
+20 or newer; set `HARMONICA_API_URL` to your own instance as described in its
+README. This package receives security and compatibility fixes; new MCP
+capabilities are developed in Pro and are not automatically backported. There
+is no requirement to migrate a working local connection to update this skill.
 
 ### Updating from v2.x
 
@@ -162,7 +200,8 @@ This keeps context lean — the router loads when you invoke the skill, referenc
 
 ## See Also
 
-- **[harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp)** — MCP server for full API access to Harmonica sessions
+- **[Hosted MCP](https://help.harmonica.chat/api-reference/mcp-server)** — recommended connection and current tools
+- **[harmonica-mcp](https://github.com/harmonicabot/harmonica-mcp)** — maintained compatibility adapter for stdio and self-hosted REST APIs
 - **[Harmonica docs](https://help.harmonica.chat)** — Platform documentation
 - **[Harmonica](https://harmonica.chat)** — Main website
 
