@@ -8,7 +8,9 @@ Resolve the session with `get_session` or search and disambiguate. Read its goal
 
 Review substantive contributions. A short answer can contain decisive evidence; do not discard it solely because the thread has fewer than three user turns. Distinguish arrivals and opening-only threads from actual contributions. Preserve human/synthetic provenance and inclusion flags. Connect eligibility to threads only when the tools expose a reliable mapping; otherwise report unresolved coverage instead of claiming the reviewed sources match the generation set. Do not treat a simulated perspective as the real person's participation or endorsement.
 
-Inspect exposed revision history when a prompt or template has changed. If current or historical instructions are not readable, state that gap rather than reconstructing them or assuming the platform generated them. Do not guess a tool name or bypass MCP through raw HTTP/SQL.
+Before judging or proposing to replace or restore a facilitation or summary prompt, use hosted `get_session_edit_history` with the session ID and `field: prompt` or `field: summary_prompt`. Read both full texts. When a template was detached, compare the current prompt with the immediately preceding recorded value and explain which method steps, questions or constraints were retained, lost or changed. A template description and a length comparison cannot establish this.
+
+Cite the revision ID, source and timestamp of the compared record. Creation entries hold the seed; ordinary edit entries archive the preceding text. Their actor and timestamp identify the edit, not necessarily the author or creation time of that text. Label the other side as the current stored field; report its origin or date only if evidenced. If records are missing, tied or ambiguous, say which comparison is possible. With no tool, no editor access or no revisions, report the specific gap and work from authorized available evidence. Never infer the missing prompt or bypass the tool through raw HTTP or SQL.
 
 For facilitation, look for:
 

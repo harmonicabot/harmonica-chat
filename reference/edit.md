@@ -25,10 +25,10 @@
 6. When detaching a template (`template_id: null`), review both the facilitation prompt and
    pre-session questions with the host. Template-derived questions are independent session data and
    are not cleared automatically. Include replacements in the same confirmed update when needed.
-7. If updating the prompt, offer to regenerate it from scratch using the same approach as [reference/design.md](design.md) Step 13 (Generate Facilitation Prompt) with the current session metadata, or let the user provide specific edits.
+7. Before replacing or restoring either prompt, follow the full-text history comparison in [review.md](review.md), including the prior revision after template detachment. For a restore, identify the exact revision and use its full value in the confirmed update. If history is unavailable, disclose the gap; do not reconstruct a restore value. If updating the facilitation prompt, offer to regenerate it from scratch using the same approach as [reference/design.md](design.md) Step 13 (Generate Facilitation Prompt) with the current session metadata, or let the user provide specific edits.
 8. Show the proposed changes and obtain confirmation if it has not already been supplied for this
    agreed update. Then call `update_session` with only those fields.
-9. Read back supported fields and report the actual change. If an accepted field is omitted by
+9. For prompt edits, read the current field back through the hosted history tool when available. Read back other supported fields and report the actual change. If an accepted field is omitted by
    the read API, disclose the readback gap rather than claiming an exact match. A settings update
    does not by itself regenerate an existing summary.
 

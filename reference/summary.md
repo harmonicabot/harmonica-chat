@@ -24,7 +24,7 @@ For a requested quality review, read the summary, current brief and relevant con
 
 Assess usefulness and fidelity separately. Does the output answer the host's question and preserve meaningful differences? Are claims, including claims of absence, supported at the strength stated? Separate participant proposals, facilitator suggestions, host background, AI interpretations and agreed decisions. Brevity alone is not an improvement if it introduces false caveats.
 
-Trace the instructions before attributing the failure. A session override, template, platform default and shared instructions may all matter. Retrieve current instructions or revision history only through exposed authorized tools. If the read surface omits them, record the gap; do not infer their text or authoring path from the output.
+Trace the instructions before attributing the failure. A session override, template, platform default and shared instructions may all matter. Use the editor-only hosted `get_session_edit_history` with `field: summary_prompt` to read the stored override and its revisions. Follow [review.md](review.md) for full-text comparison and attribution. A null or empty override does not identify the selected template, captured chain default or appended shared rules. If the read surface omits them, record the gap; do not infer their text or authoring path from the output.
 
 Identify the responsible layer using [review.md](review.md). Missing background, repeated synthetic disclaimers, incorrect inclusion, an over-specified custom format, shared policy, incomplete provider output and a nonrepresentative eval call for different fixes. Treat suspected model effects as hypotheses unless compared under the same relevant inputs and runtime.
 
