@@ -39,6 +39,10 @@ Apply the same defaults as [reference/design.md](design.md) Step 8 for Polls and
 
 **Step 4 — Confirm & Create:**
 
+Include the result's audience and intended use, inferred from the brief when clear. Keep suitable
+template summary instructions. Before proposing a custom `summary_prompt`, load
+[summary.md](summary.md) and include its structure and proportional length in the design.
+
 Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
 > Here's your session design:

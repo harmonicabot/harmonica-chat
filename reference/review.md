@@ -1,87 +1,45 @@
-# Lifecycle: `review <session reference>` — Review Facilitation Quality and Improve Prompts
+# Lifecycle: `review <session reference>` — Diagnose Quality and Choose the Right Repair
 
-Analyze participant transcripts to identify what worked, what didn't, and suggest specific prompt improvements.
+Review the aspect the host requested: facilitation, synthesis or both. For summary quality, also load [summary.md](summary.md). A review alone does not authorize mutation, regeneration or outreach.
 
-**1. Resolve the session.** If a session ID is provided, use `get_session`. If topic text is provided, use `search_sessions`. If empty, use `list_sessions` with `limit: 10` and ask the user to pick.
+## Gather evidence
 
-**2. Pull all transcripts** via `get_responses`. Keep only participants with 3+ user messages — skip drive-bys who joined but didn't engage.
+Resolve the session with `get_session` or search and disambiguate. Read its goal, critical question, context and relevant instructions through supported tools, then retrieve the relevant conversations. For synthesis review, also read `get_summary` and participant inclusion metadata.
 
-**3. Analyze each transcript across five dimensions:**
+Review substantive contributions. A short answer can contain decisive evidence; do not discard it solely because the thread has fewer than three user turns. Distinguish arrivals and opening-only threads from actual contributions. Preserve human/synthetic provenance and inclusion flags. Connect eligibility to threads only when the tools expose a reliable mapping; otherwise report unresolved coverage instead of claiming the reviewed sources match the generation set. Do not treat a simulated perspective as the real person's participation or endorsement.
 
-- **Structure adherence** — did the facilitator follow the prompt's question flow? Ask ONE question at a time? Keep messages to 2-3 sentences?
-- **Engagement quality** — where did the participant give short / vague answers, and what preceded those moments? Where did they engage deeply, and what prompted that? Did they drop off, and at what point?
-- **Cross-pollination** (if enabled) — did it trigger, how many times, was the timing appropriate (not too early, not interrupting a deep answer)? Were insights relevant and concise? Did the participant engage with the insight or ignore it?
-- **Edge case handling** — "not sure" / vague answers (did the facilitator help or just rephrase?); meta questions like "how many people?" (handled honestly?); session ending (clean exit or awkward continuation?); fourth-wall breaks (did the facilitator reference "this group" or session mechanics?)
-- **Goal alignment** — did the conversation serve the session's stated goal? Did the facilitator steer toward it, or drift?
+Inspect exposed revision history when a prompt or template has changed. If current or historical instructions are not readable, state that gap rather than reconstructing them or assuming the platform generated them. Do not guess a tool name or bypass MCP through raw HTTP/SQL.
 
-**4. Aggregate patterns across transcripts.** Identify:
+For facilitation, look for:
 
-- **Common failure modes** — issues that appeared in 2+ transcripts
-- **Common success patterns** — what consistently worked well
-- **Cross-pollination effectiveness** — overall hit rate, quality, timing
-- **Drop-off points** — where participants commonly disengage
-- **Missing capabilities** — things the facilitator should do but can't
+- Alignment with the session's purpose and selected method.
+- Question shape and depth: whether follow-ups add useful information or repeat what is already known.
+- Engagement, uncertainty, skips, early exits and endings in their conversational context.
+- Cross-pollination timing, relevance and boundaries when enabled.
+- Context or capabilities the facilitator needs but does not have.
 
-**5. For each pattern, propose a specific prompt fix.** Every pattern in step 4 must produce a concrete change. The connection between "participants kept doing X" and "change the prompt to handle X" must be explicit.
+Cite the exact exchange supporting a finding: the participant's contribution and the facilitator's adjacent question or framing. A summary finding should pair the disputed output claim with its supporting or contradictory source. Keep quotes minimal and protect private details.
 
-Examples of pattern → fix:
-- "4/7 participants asked 'what group?'" → remove "this group" from question, name the actual cohort
-- "3/7 said 'not sure' to the same question" → rephrase, or add a rule to offer other participants' answers as a starting point
-- "5/7 gave 1-word answers to question 3" → the question is too abstract, make it concrete
-- "Cross-pollination insight was ignored in 3/4 cases" → insights are too long or poorly timed, adjust generation prompt
+## Diagnose the responsible layer
 
-Use this format for each issue:
+Use evidence to distinguish these causes; a single clear defect can be actionable, while repeated observations help establish a pattern.
 
-```
-## Issue: [description]
-Evidence: [N/M transcripts]
-Example: [participant] said "[quote]" in response to "[facilitator question]"
+| Layer | What to check | Appropriate repair |
+|---|---|---|
+| Host brief or method design | Is the purpose clear? Are necessary definitions, roles, inputs and outputs supplied? | Clarify the brief or process; do not invent the missing method. |
+| Contributions and eligibility | Are sources substantive, included correctly and labelled accurately? Is repetition being confused with support? | Correct the evidenced source/eligibility issue with authorization; preserve provenance. |
+| Selected instructions | Did a custom or template prompt impose the observed problem? Does it still fit the current goal? | Change the responsible instruction, retaining useful method requirements. |
+| Shared runtime or tools | Did context, prompt resolution, rendering, completion handling or an unavailable capability cause the failure? | Reuse or file a systemic issue; a local prompt rule is not an implementation fix. |
+| Model behaviour or evaluation | Did the model fail a justified requirement? Does the eval use the effective prompt, context and runtime? | Use a bounded relevant check. A test of a different request cannot validate this repair. |
 
-Current prompt: "[exact text causing the problem]"
-Suggested change: "[new text]"
-Reason: [why this fixes it, based on the transcript evidence]
-```
+Do not force every pattern into a prompt addition. A prompt change is appropriate only when the intended behaviour is missing or ambiguous at that layer. Do not propose a model swap, new judge, extra generation pass or broad tooling project without evidence that it addresses the gap.
 
-Every Example must include both the literal participant quote AND the facilitator question that prompted it. No hand-waving with "participant X seemed disengaged at step 3" — quote the exchange.
+## Present findings and apply authorized repairs
 
-Changes are one of:
-- **Prompt rule additions** — new rules in the prompt's ### Rules section
-- **Question rewrites** — modify specific questions in the prompt's ### Flow section
-- **Systemic fixes** — needs code changes (create Linear issue with the right project)
+Lead with the effect on the host or participants. For each actionable finding, give the observed behaviour, source evidence, responsible layer, proposed repair and remaining uncertainty. Report what worked where it affects the decision; avoid an exhaustive audit format when a short explanation is sufficient.
 
-**6. Present findings as:**
+Separate verified defects, plausible contributors and unknowns. Reuse existing tracker issues before creating duplicates. A requested product-wide fix remains active through the shared repair, checks and approved release; do not replace it with a per-session workaround or ask for another selection merely to continue the already-authorized scope.
 
-```markdown
-## Session Review: "[topic]"
+If changes were requested and authorized, prepare the concrete patch, preserve unrelated settings and apply it through supported tools. Obtain approval only where it is still missing, including independent scope, publication and model usage. Read back supported fields and inspect generated output when regeneration is authorized. Follow agreed attempt limits; do not claim success from an acknowledgment, shorter text or green plumbing tests alone.
 
-**Participants reviewed:** N of M (filtered to 3+ messages)
-**Cross-pollination:** triggered N times across M participants
-**Session goal:** [goal]
-
-### What Worked
-- [pattern]: seen in N/M transcripts
-
-### Issues Found
-1. **[issue]** (N/M transcripts)
-   - Example: [participant] said "[quote]" in response to "[facilitator question]"
-   - Suggested fix: [specific change]
-
-### Prompt Changes
-[Each change with before/after]
-
-### Linear Issues
-[Systemic issues needing code changes, with suggested project]
-```
-
-**7. Apply changes.** Ask the user:
-- "Apply these prompt changes to the session?" → use `update_session`
-- "Create Linear issues for systemic problems?" → create with the right project
-- "Save findings for future reference?" → save to `docs/session-reviews/` in the relevant project
-
-## Key principles
-
-- **Evidence over opinion** — every finding cites a specific transcript moment, with both participant quote and the facilitator prompt that produced it.
-- **Patterns over incidents** — single occurrences are notes; repeated issues (2+ transcripts) are findings.
-- **Actionable over descriptive** — every issue gets a concrete fix proposal.
-- **Prompt changes are cheap, code changes are expensive** — suggest prompt changes freely; gate code changes through Linear issues.
-- **The facilitator is the product** — its behavior IS the user experience. Small wording shifts compound.
+Save findings only when requested or required by the selected project. Do not send invitations, messages or other outreach as part of a review without explicit authorization.

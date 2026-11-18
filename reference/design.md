@@ -183,6 +183,11 @@ Store the final questions list for inclusion in the `create_session` call.
 
 **Step 12 — Confirm:**
 
+State who will read the result and what it should help them understand or decide, using the
+host's goal and critical question. Use suitable template summary instructions by default. If a
+custom report format is needed, load [summary.md](summary.md) and include its intended structure
+and proportional length in the confirmed design; do not add a long per-option checklist.
+
 Present a summary of all gathered fields, then use `AskUserQuestion` to confirm:
 
 > Here's your session design:
@@ -232,7 +237,7 @@ Only show diff formatting for the field(s) that actually changed. Unchanged fiel
 The facilitation prompt depends on whether a template was chosen in Step 2:
 
 - **A template was chosen** (`template_id` is set) — **do NOT generate a prompt yourself**. Omit `prompt` so the v1/MCP creation path generates a tailored prompt from the session brief while preserving the template binding, template questions, and runtime phases. Do not claim this directly copies the template's stored `facilitation_prompt`; it currently does not.
-- **Freeform** (no template, or template fell through) — generate a tailored prompt using the structure below. Without it, the facilitator falls back to a generic "skilled facilitator" system prompt that knows nothing about your topic.
+- **Freeform** (deliberately no template) — author a tailored prompt using the structure below when the confirmed design calls for it. The hosted creation path can generate from the brief when `prompt` is omitted; do not describe that path as a topic-unaware generic fallback. A failed template lookup is not permission to switch to freeform silently.
 
 Freeform prompt structure:
 
@@ -262,7 +267,7 @@ Objective: {goal}
 
 Derive 4-6 natural conversational questions from the goal. Neutral professional tone unless the topic suggests otherwise.
 
-**Important**: The prompt should be specific to THIS session — weave in the actual topic, goal, and context into the questions themselves. A prompt about "NSRT community meetup planning" should ask about neighborhood needs, not generic facilitation questions. This is the key difference from the generic fallback.
+**Important**: The prompt should be specific to THIS session — weave in the actual topic, goal, and context into the questions themselves. A prompt about "NSRT community meetup planning" should ask about neighborhood needs, not generic facilitation questions.
 
 **Important**: The flow should feel like a natural 1-on-1 conversation, not a survey. Each question should build on the previous answer where possible. The facilitator adapts — it doesn't rigidly follow a script.
 

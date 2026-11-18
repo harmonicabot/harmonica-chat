@@ -4,7 +4,7 @@ description: Design, create, and manage Harmonica deliberation sessions. Use whe
 allowed-tools: mcp__harmonica__*, AskUserQuestion, Read, Bash(git:*), Bash(echo:*), Bash(curl:*)
 ---
 
-<!-- harmonica-chat v3.6.0 -->
+<!-- harmonica-chat v3.7.0 -->
 
 # Harmonica — Session Companion
 
@@ -19,6 +19,8 @@ Shared rules every subcommand inherits. Don't violate them per local convenience
 - **ONE question per message** in any flow that asks the user (design, accelerated) AND in any facilitation prompt you generate. Never bundle questions. Wait for the answer before moving on.
 - **Facilitation prompt comes from the right place.** If a template was chosen, omit `prompt` so Harmonica generates a tailored session prompt from the brief while preserving the template binding and runtime behavior. The v1/MCP create path does not directly copy the template's stored `facilitation_prompt`. Only generate and pass a prompt for a deliberately freeform session.
 - **Don't generate verbose prompts.** No sub-questions, no multi-part questions, no "Step X of Y" structures inside the prompt. Messages are 2-3 sentences max. Participants are on mobile and won't write essays. Think chat, not survey.
+- **Design summaries for their reader and purpose.** Before writing or repairing `summary_prompt`, load [reference/summary.md](reference/summary.md). Lead with the useful synthesis, comparison or finding, use a proportional length budget, and preserve required method outputs. `prompt_summary` describes the facilitation approach; it is not the instruction for generating results.
+- **Diagnose before changing prompts.** A poor result may come from the brief, sources, eligibility, selected instructions, shared runtime or evaluation. Follow [reference/review.md](reference/review.md); do not turn every defect into a prompt rule. A requested product-wide repair remains unfinished after a per-session patch.
 - **Don't show the generated prompt by default.** Generate it internally for the `create_session` call. Only show it if the user explicitly asks to see or edit it.
 - **Don't override template structure unilaterally.** If a template is selected, preserve `template_id` and omit `prompt`; do not claim the stored template prompt was copied into the session. Generate a replacement only when the host explicitly switches to freeform.
 - **Don't push templates on freeform users.** If someone wants a custom session, help them design it without a template. Don't force a template choice for the sake of structure.

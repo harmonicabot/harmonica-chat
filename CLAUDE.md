@@ -52,7 +52,9 @@ After session creation (design / accelerated / follow-up / onboarding), the agen
 
 **Session Design Laws elevated to the router.** Previously rules like "English-only metadata", "ONE question per message", "always generate a tailored prompt", "don't show the prompt by default" were scattered across 13 steps and a "What NOT to Do" footer. Now they're top-level shared laws every subcommand inherits.
 
-**Facilitation prompt generation is non-negotiable.** The Harmonica API does NOT generate prompts — it falls back to a generic "skilled facilitator" template. Skipping prompt generation produces low-engagement sessions. This is one of the Session Design Laws.
+**Preserve the verified prompt-authoring path.** With a selected template, omit `prompt` so the hosted creation path tailors facilitation while preserving the template binding; only author a replacement for deliberately freeform sessions. Summary instructions are separate: `summary_prompt` controls results, while `prompt_summary` describes facilitation. Do not attribute a custom summary instruction to a platform generator without evidence.
+
+**Summary quality is a shared outcome.** Design instructions around the reader and intended use, with a proportional length and material caveats stated once. Review both supported findings and negative claims. Diagnose the responsible layer before prompt edits; a requested product-wide fix is not completed by changing one session. Keep detailed guidance in `reference/summary.md` and `reference/review.md` rather than adding another always-loaded workflow.
 
 **Metadata language follows the participants (changed 2026-09-30).** This used to be an English-only rule claiming non-Latin characters get corrupted into `???`. A test on 2026-09-30 did not reproduce that. A session created through the MCP with Cyrillic in every field, prompt included, stored it intact, rendered it on the participant page, and the facilitator followed a Cyrillic-only instruction. A second law covers languages with grammatical gender: tell the facilitator to use the neutral register (Russian «вы») and never guess gender from a name.
 
